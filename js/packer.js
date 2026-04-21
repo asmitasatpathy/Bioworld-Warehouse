@@ -41,10 +41,75 @@ function parsePackerToteLP(rawValue = "") {
 function ensurePackerStateObjects() {
   if (!window.appState.sickTotes) window.appState.sickTotes = {};
   if (!window.appState.toteRegistry) window.appState.toteRegistry = {};
+  if (!window.appState.recentPackedTotes) window.appState.recentPackedTotes = {};
+}
+
+function getRecentPackedTotes() {
+  ensurePackerStateObjects();
+  return window.appState.recentPackedTotes;
+}
+
+function markToteRecentlyPacked(toteLp) {
+  const packed = getRecentPackedTotes();
+  packed[String(toteLp || "").toUpperCase()] = {
+    packedAt: new Date().toISOString()
+  };
+}
+
+function isToteRecentlyPacked(toteLp) {
+  const packed = getRecentPackedTotes();
+  const key = String(toteLp || "").toUpperCase();
+  const entry = packed[key];
+  if (!entry || !entry.packedAt) return false;
+
+  const packedAt = new Date(entry.packedAt).getTime();
+  const now = Date.now();
+  return (now - packedAt) < (15 * 60 * 1000);
+}
+
+function cleanupRecentPackedTotes() {
+  const packed = getRecentPackedTotes();
+  const now = Date.now();
+
+  Object.keys(packed).forEach(key => {
+    const packedAt = new Date(packed[key].packedAt || 0).getTime();
+    if (!packedAt || (now - packedAt) >= (15 * 60 * 1000)) {
+      delete packed[key];
+    }
+  });
 }
 
 function getPackerOrderKey(order) {
   return String(order.so || "");
+}
+
+function getNextReadyToteLp() {
+  ensurePackerStateObjects();
+  cleanupRecentPackedTotes();
+
+  const orders = window.appState.orders || [];
+  const sickTotes = window.appState.sickTotes || {};
+
+  const readyOrders = orders.filter(order =>
+    order.status === "Ready for Packing" &&
+    order.toteLp &&
+    !sickTotes[String(order.toteLp || "").toUpperCase()] &&
+    !isToteRecentlyPacked(order.toteLp)
+  );
+
+  if (!readyOrders.length) return "";
+
+  const seen = new Set();
+  const uniqueReady = [];
+  readyOrders.forEach(order => {
+    const tote = String(order.toteLp || "").toUpperCase();
+    if (!seen.has(tote)) {
+      seen.add(tote);
+      uniqueReady.push(order);
+    }
+  });
+
+  return uniqueReady.length ? String(uniqueReady[0].toteLp || "").toUpperCase() : "";
 }
 
 function markToteSick(toteLp, exceptions, carrier = "") {
@@ -109,6 +174,7 @@ function clearPackerSession() {
 
 function setPackerTote() {
   ensurePackerStateObjects();
+  cleanupRecentPackedTotes();
 
   const toteInput = document.getElementById("packerToteInput");
   const msg = document.getElementById("packerToteMessage");
@@ -119,14 +185,24 @@ function setPackerTote() {
   if (!parsed.isValid) {
     msg.textContent = "Invalid Tote LP.";
     msg.className = "message-box message-error";
-    toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50);
+    toteInput.value = "";
+    window.setTimeout(() => toteInput.focus(), 50);
     return;
   }
 
   const toteLp = parsed.normalized;
+
+  if (isToteRecentlyPacked(toteLp)) {
+    msg.textContent = "Already done";
+    msg.className = "message-box message-error";
+    toteInput.value = "";
+    renderPackerDashboard();
+    window.setTimeout(() => toteInput.focus(), 50);
+    return;
+  }
+
   const sickData = (window.appState.sickTotes || {})[toteLp];
 
-  // Exact Tote LP contents only
   const toteOrdersAll = (window.appState.orders || []).filter(order =>
     String(order.toteLp || "").toUpperCase() === toteLp
   );
@@ -134,7 +210,8 @@ function setPackerTote() {
   if (!toteOrdersAll.length) {
     msg.textContent = "No orders found for this Tote LP.";
     msg.className = "message-box message-error";
-    toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50);
+    toteInput.value = "";
+    window.setTimeout(() => toteInput.focus(), 50);
     return;
   }
 
@@ -148,7 +225,7 @@ function setPackerTote() {
   if (exSection) exSection.style.display = "none";
 
   if (sickData) {
-    msg.textContent = `Sick Tote`;
+    msg.textContent = "Sick Tote";
     msg.className = "message-box message-error";
     renderPackerDashboard();
     return;
@@ -165,7 +242,10 @@ function setPackerTote() {
 
   renderPackerDashboard();
 
-  if (toteInput) window.setTimeout(() => toteInput.focus(), 80);
+  const skuInput = document.getElementById("packerSkuInput");
+  if (skuInput) {
+    window.setTimeout(() => skuInput.focus(), 80);
+  }
 }
 
 function verifyPackerSku() {
@@ -173,6 +253,7 @@ function verifyPackerSku() {
 
   const skuInput = document.getElementById("packerSkuInput");
   const msg = document.getElementById("packerSkuMessage");
+  const toteInput = document.getElementById("packerToteInput");
   if (!skuInput || !msg) return;
 
   if (!window.packerSession.toteLp) {
@@ -192,7 +273,8 @@ function verifyPackerSku() {
   if (!scannedSku) {
     msg.textContent = "Please scan a SKU QR.";
     msg.className = "message-box message-error";
-    skuInput.value = ""; window.setTimeout(() => skuInput.focus(), 50);
+    skuInput.value = "";
+    window.setTimeout(() => skuInput.focus(), 50);
     return;
   }
 
@@ -213,6 +295,7 @@ function verifyPackerSku() {
 
     skuInput.value = "";
     renderPackerDashboard();
+    window.setTimeout(() => skuInput.focus(), 50);
     return;
   }
 
@@ -226,6 +309,7 @@ function verifyPackerSku() {
     msg.className = "message-box message-error";
     skuInput.value = "";
     renderPackerDashboard();
+    window.setTimeout(() => skuInput.focus(), 50);
     return;
   }
 
@@ -239,6 +323,7 @@ function verifyPackerSku() {
     msg.className = "message-box message-error";
     skuInput.value = "";
     renderPackerDashboard();
+    window.setTimeout(() => skuInput.focus(), 50);
     return;
   }
 
@@ -302,7 +387,9 @@ function validatePackerSession() {
       carrier: order.carrier || "-",
       picker: order.assignedPicker || "-",
       expectedTote: order.toteLp || "-",
-      reason: "Missing SKU"
+      reason: "Missing SKU",
+      aisle: order.aisle || order.binCode || "-",
+      expectedBin: order.binCode || "-"
     });
   });
 
@@ -312,11 +399,10 @@ function validatePackerSession() {
 
     if (typeof renderAdminSummary === "function") renderAdminSummary();
 
-    const failedTote = window.packerSession.toteLp;
     clearPackerSession();
     msg.textContent = "Sick Tote";
     msg.className = "message-box message-error";
-    toteMsg.textContent = `Sick Tote`;
+    toteMsg.textContent = "Sick Tote";
     toteMsg.className = "message-box message-error";
     renderPackerDashboard();
     return;
@@ -334,12 +420,15 @@ function validatePackerSession() {
     }
   });
 
-  // Release tote only after successful validation
+  // Mark tote as done and free it
   window.appState.toteRegistry[window.packerSession.toteLp] = {
-    status: "OPEN",
+    status: "DONE",
     assignedPicker: null,
     updatedAt: new Date().toISOString()
   };
+
+  // Prevent immediate rescan for 15 minutes
+  markToteRecentlyPacked(window.packerSession.toteLp);
 
   saveState();
   if (typeof renderAdminSummary === "function") renderAdminSummary();
@@ -348,7 +437,7 @@ function validatePackerSession() {
 
   clearPackerSession();
 
-  toteMsg.textContent = `Validated`;
+  toteMsg.textContent = "Validated";
   toteMsg.className = "message-box message-success";
 }
 
@@ -357,14 +446,32 @@ function renderPackerDashboard() {
   const exEl = document.getElementById("packerExceptionList");
   if (!listEl || !exEl) return;
 
-  const toteOrders = window.packerSession.toteOrders || [];
-  const scannedSOSet = new Set(window.packerSession.scannedSOs || []);
+  cleanupRecentPackedTotes();
 
+  // If no tote loaded, show only the next Tote LP to scan
   if (!window.packerSession.toteLp) {
-    listEl.innerHTML = "";
+    const nextTote = getNextReadyToteLp();
+
+    listEl.innerHTML = nextTote
+      ? `
+        <div style="background:#fff; border-radius:16px; padding:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
+          <div style="font-size:13px; color:#666; margin-bottom:8px;">Next Tote LP</div>
+          <div style="font-size:24px; font-weight:700; color:#111;">${nextTote}</div>
+        </div>
+      `
+      : `
+        <div style="background:#fff; border-radius:16px; padding:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
+          <div style="font-size:13px; color:#666; margin-bottom:8px;">Next Tote LP</div>
+          <div style="font-size:20px; font-weight:700; color:#111;">No totes ready</div>
+        </div>
+      `;
+
     exEl.innerHTML = "";
     return;
   }
+
+  const toteOrders = window.packerSession.toteOrders || [];
+  const scannedSOSet = new Set(window.packerSession.scannedSOs || []);
 
   listEl.innerHTML = `
     <h3 class="packer-list-title">Tote Packing List - ${window.packerSession.toteLp}</h3>
@@ -443,10 +550,11 @@ function renderPackerDashboard() {
   `;
 }
 
-(function(){
+(function () {
   const originalSetPackerTote = window.setPackerTote || setPackerTote;
   const originalVerifyPackerSku = window.verifyPackerSku || verifyPackerSku;
-  window.setPackerTote = function(){
+
+  window.setPackerTote = function () {
     originalSetPackerTote.apply(this, arguments);
     const msg = document.getElementById("packerToteMessage");
     if (msg && msg.className.indexOf("message-success") !== -1) {
@@ -454,7 +562,8 @@ function renderPackerDashboard() {
       if (skuInput) window.setTimeout(() => skuInput.focus(), 80);
     }
   };
-  window.verifyPackerSku = function(){
+
+  window.verifyPackerSku = function () {
     originalVerifyPackerSku.apply(this, arguments);
     const toteLoaded = window.packerSession && window.packerSession.toteLp;
     const skuInput = document.getElementById("packerSkuInput");
