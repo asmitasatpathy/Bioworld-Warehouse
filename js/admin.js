@@ -676,26 +676,30 @@ function showPackingExceptionMode(key, mode) {
     });
 
     host.innerHTML = `
-      <div class="exception-meta" style="margin-top:12px;">
-        <div><strong>Missing SKU:</strong> ${firstMissing.scannedSku || item.sku || "-"}</div>
-        <div><strong>Aisle:</strong> ${firstMissing.aisle || item.aisle || "-"}</div>
-        <div><strong>Shelf:</strong> ${firstMissing.expectedBin || item.shelf || "-"}</div>
-      </div>
-      ${suggestion ? `
-        <div class="message-box message-success" style="margin:12px 0;">
-          <strong>Suggested picker:</strong> ${suggestion.picker}<br/>
-          <strong>Recommendation:</strong> ${suggestion.reason}
+      <div class="packing-exception-clean-card">
+        <div class="packing-exception-title">Missing SKU</div>
+
+        <div class="packing-exception-details">
+          <div><strong>SKU:</strong> ${firstMissing.scannedSku || item.sku || "-"}</div>
+          <div><strong>Aisle:</strong> ${firstMissing.aisle || item.aisle || "-"}</div>
+          <div><strong>Shelf:</strong> ${firstMissing.expectedBin || item.shelf || "-"}</div>
         </div>
-      ` : ""}
-      <div class="exception-actions">
-        <div>
-          <label>Reassign to picker</label>
+
+        <div class="packing-exception-suggestion">
+          <div class="suggestion-label">Suggested picker</div>
+          <div class="suggestion-value">${suggestion ? suggestion.picker : "No active picker suggestion"}</div>
+          <div class="suggestion-reason">${suggestion ? suggestion.reason : "Assign manually."}</div>
+        </div>
+
+        <div class="packing-exception-picker-select">
+          <label>Assign to picker</label>
           <select id="pack-reassign-${key}">
             <option value="">Select picker</option>
             ${pickerOptions}
           </select>
         </div>
-        <div>
+
+        <div class="packing-exception-actions">
           <button onclick="savePackingMissingReassignment('${key}')">Save Reassignment</button>
         </div>
       </div>
@@ -705,18 +709,21 @@ function showPackingExceptionMode(key, mode) {
     if (select && suggestion) select.value = suggestion.picker;
   } else {
     host.innerHTML = `
-      <div class="exception-meta" style="margin-top:12px;">
-        <div><strong>Additional SKU(s):</strong> ${(item.additionalItems || []).map(x => x.scannedSku).filter(Boolean).join(", ") || item.sku || "-"}</div>
-      </div>
-      <div class="exception-actions">
-        <div>
+      <div class="packing-exception-clean-card">
+        <div class="packing-exception-title">Additional SKU</div>
+
+        <div class="packing-exception-details">
+          <div><strong>SKU(s):</strong> ${(item.additionalItems || []).map(x => x.scannedSku).filter(Boolean).join(", ") || item.sku || "-"}</div>
+          <div>This item can be physically removed and returned to bin.</div>
+        </div>
+
+        <div class="packing-exception-actions">
           <button onclick="clearAdditionalPackingException('${key}')">Remove Tote Exception</button>
         </div>
       </div>
     `;
   }
 }
-
 function savePackingMissingReassignment(key) {
   const allItems = getActiveExceptionItems();
   const item = allItems.find(entry => entry.key === key);
