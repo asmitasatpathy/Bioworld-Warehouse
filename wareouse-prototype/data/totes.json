@@ -1,6 +1,0 @@
-[
-  { "lp": "TOTE-DHL-001", "carrier": "DHL", "shelf": "Shelf 1" },
-  { "lp": "TOTE-FEDEX-001", "carrier": "FEDEX", "shelf": "Shelf 2" },
-  { "lp": "TOTE-UPS-001", "carrier": "UPS", "shelf": "Shelf 3" },
-  { "lp": "TOTE-USPS-001", "carrier": "USPOSTAL", "shelf": "Shelf 4" }
-]
