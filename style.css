@@ -1268,3 +1268,86 @@ label {
 .icon-btn { width:48px; min-width:48px; padding:10px 0; border-radius:12px; font-size:22px; }
 .exception-category-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
 .active-toggle { background: linear-gradient(135deg, #2b69f4 0%, #4f85ff 100%) !important; color:#fff; }
+.simple-pack-queue-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.simple-pack-label {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.simple-pack-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+}
+
+.packing-exception-clean-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.packing-exception-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #111;
+}
+
+.packing-exception-details {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.packing-exception-suggestion {
+  background: #f4f8ff;
+  border: 1px solid #d8e6ff;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.suggestion-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.suggestion-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+}
+
+.suggestion-reason {
+  font-size: 13px;
+  color: #444;
+  margin-top: 4px;
+}
+
+.packing-exception-picker-select {
+  margin-bottom: 14px;
+}
+
+.packing-exception-picker-select select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 10px;
+  padding: 0 12px;
+}
+
+.packing-exception-actions button {
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 0 16px;
+}
