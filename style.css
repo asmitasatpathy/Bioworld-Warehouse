@@ -1366,3 +1366,53 @@ label {
   line-height: 1;
   vertical-align: middle;
 }
+.simple-pack-queue-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.simple-pack-label {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.simple-pack-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+  word-break: break-word;
+}
+
+.packer-cards-wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.packer-mobile-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+.packer-mobile-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+
+.packer-mobile-row span {
+  color: #666;
+  min-width: 92px;
+}
+
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
