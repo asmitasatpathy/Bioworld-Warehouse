@@ -75,6 +75,9 @@ function importOrders() {
     window.appState.orders = orders;
     window.appState.sickTotes = {};
     window.appState.toteRegistry = {};
+    window.appState.resolvedExceptions = [];
+    window.currentExceptionCategory = null;
+    window.currentPackingModePage = null;
     saveState();
 
     renderAdminSummary();
@@ -108,12 +111,19 @@ function resetTrialPicks() {
     order.packTime = null;
     order.isNewAssignedPick = false;
     order.newAssignedAt = null;
+    order.adminDecision = null;
+    order.adminComment = null;
+    order.adminImage = null;
+    order.adminReviewedAt = null;
+    order.adminPriority = false;
   });
 
   window.appState.currentOrder = null;
   window.appState.sickTotes = {};
   window.appState.toteRegistry = {};
   window.appState.resolvedExceptions = [];
+  window.currentExceptionCategory = null;
+  window.currentPackingModePage = null;
   saveState();
 
   renderAdminSummary();
@@ -421,15 +431,30 @@ function getActiveExceptionItems() {
 }
 
 window.currentExceptionCategory = null;
+window.currentPackingModePage = null;
 
 function setExceptionCategory(category) {
   window.currentExceptionCategory = category;
+  window.currentPackingModePage = null;
+
   const pickBtn = document.getElementById("exceptionTabPicking");
   const packBtn = document.getElementById("exceptionTabPacking");
   const packControls = document.getElementById("packingExceptionControls");
+
   if (pickBtn) pickBtn.classList.toggle("active-toggle", category === "pick");
   if (packBtn) packBtn.classList.toggle("active-toggle", category === "pack");
   if (packControls) packControls.style.display = category === "pack" ? "flex" : "none";
+
+  renderExceptionHandling();
+}
+
+function openPackingModePage(mode) {
+  window.currentPackingModePage = mode;
+  renderExceptionHandling();
+}
+
+function backToPackingModes() {
+  window.currentPackingModePage = null;
   renderExceptionHandling();
 }
 
@@ -452,6 +477,7 @@ function downloadFinalReportExcel() {
 
 function backToAdminDashboard() {
   renderAdminSummary();
+  window.currentPackingModePage = null;
   showScreen("adminDashboard");
 }
 
@@ -579,38 +605,38 @@ function renderExceptionHandling() {
 
   const allItems = getActiveExceptionItems();
   const category = window.currentExceptionCategory;
-  const items = category ? allItems.filter(item => category === "pick" ? item.type === "pick" : item.type === "sick") : [];
 
   if (!category) {
     emptyEl.textContent = "Select Picking Exceptions or Packing Exceptions";
     emptyEl.style.display = "block";
+    emptyEl.style.color = "";
     listEl.innerHTML = "";
     return;
   }
 
-  if (!items.length) {
-    emptyEl.textContent = category === "pick" ? "No more picking exceptions" : "No more packing exceptions";
-    emptyEl.style.display = "block";
-    emptyEl.style.color = "green";
-    listEl.innerHTML = "";
-    return;
-  }
+  if (category === "pick") {
+    const items = allItems.filter(item => item.type === "pick");
 
-  emptyEl.style.display = "none";
-  const pickerOptions = getOngoingPickers().map(name => `<option value="${name}">${name}</option>`).join("");
+    if (!items.length) {
+      emptyEl.textContent = "No more picking exceptions";
+      emptyEl.style.display = "block";
+      emptyEl.style.color = "green";
+      listEl.innerHTML = `
+        <div class="packing-empty-state">
+          <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
+        </div>
+      `;
+      return;
+    }
 
-  listEl.innerHTML = `<div class="exception-list">${items.map(item => {
-    const missingBlock = item.type === "sick" ? `
-      <div class="exception-split-row">
-        <button type="button" class="secondary-btn active-toggle" onclick="showPackingExceptionMode('${item.key}','missing')">Missing SKU</button>
-        <button type="button" class="secondary-btn" onclick="showPackingExceptionMode('${item.key}','additional')">Additional SKU</button>
-      </div>
-      <div id="packing-mode-${item.key}" class="packing-mode-box"></div>
-    ` : "";
+    emptyEl.style.display = "none";
+    emptyEl.style.color = "";
 
-    return `
+    const pickerOptions = getOngoingPickers().map(name => `<option value="${name}">${name}</option>`).join("");
+
+    listEl.innerHTML = `<div class="exception-list">${items.map(item => `
       <div class="exception-card">
-        <h3>${item.type === "sick" ? "Packing Exception" : "Picking Exception"} - ${item.key}</h3>
+        <h3>Picking Exception - ${item.key}</h3>
         <div class="exception-meta">
           <div><strong>Picker:</strong> ${item.picker}</div>
           <div><strong>SO:</strong> ${item.so}</div>
@@ -620,122 +646,209 @@ function renderExceptionHandling() {
           <div><strong>Reason:</strong> ${item.reason}</div>
         </div>
 
-        ${missingBlock}
+        <div class="exception-actions">
+          <div>
+            <label>Decision</label>
+            <select id="decision-${item.key}" onchange="handleExceptionDecisionChange('${item.key}')">
+              <option value="">Select decision</option>
+              <option>Approve Exception</option>
+              <option>Reject Exception</option>
+              <option>Reassign</option>
+              <option>Short Pick / Inventory Issue</option>
+              <option>Damage Hold</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div id="reassign-wrap-${item.key}" style="display:none;">
+            <label>Reassign to picker</label>
+            <select id="reassign-${item.key}">
+              <option value="">Select picker</option>
+              ${pickerOptions}
+            </select>
+          </div>
+          <div id="image-wrap-${item.key}" style="display:none;">
+            <label>Upload image</label>
+            <input type="file" id="image-${item.key}" accept="image/*" />
+          </div>
+          <div id="comment-wrap-${item.key}" class="full" style="display:none;">
+            <label>Comment</label>
+            <input type="text" id="comment-${item.key}" placeholder="Enter details" />
+          </div>
+          <div>
+            <button onclick="saveExceptionDecision('${item.key}')">Save Decision</button>
+          </div>
+        </div>
+      </div>
+    `).join("")}</div>`;
+    return;
+  }
 
-        ${item.type === "pick" ? `
-          <div class="exception-actions">
-            <div>
-              <label>Decision</label>
-              <select id="decision-${item.key}" onchange="handleExceptionDecisionChange('${item.key}')">
-                <option value="">Select decision</option>
-                <option>Approve Exception</option>
-                <option>Reject Exception</option>
-                <option>Reassign</option>
-                <option>Short Pick / Inventory Issue</option>
-                <option>Damage Hold</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div id="reassign-wrap-${item.key}" style="display:none;">
-              <label>Reassign to picker</label>
-              <select id="reassign-${item.key}"><option value="">Select picker</option>${pickerOptions}</select>
-            </div>
-            <div id="image-wrap-${item.key}" style="display:none;">
-              <label>Upload image</label>
-              <input type="file" id="image-${item.key}" accept="image/*" />
-            </div>
-            <div id="comment-wrap-${item.key}" class="full" style="display:none;">
-              <label>Comment</label>
-              <input type="text" id="comment-${item.key}" placeholder="Enter details" />
-            </div>
-            <div>
-              <button onclick="saveExceptionDecision('${item.key}')">Save Decision</button>
-            </div>
-          </div>` : ""}
-      </div>`;
-  }).join("")}</div>`;
+  const packingItems = allItems.filter(item => item.type === "sick");
+  const missingItems = packingItems.filter(item => (item.missingItems || []).length > 0);
+  const additionalItems = packingItems.filter(item => (item.additionalItems || []).length > 0);
 
-  items.forEach(item => {
-    if (item.type === "sick") {
-      showPackingExceptionMode(item.key, item.missingItems && item.missingItems.length ? "missing" : "additional");
-    }
-  });
+  if (!packingItems.length) {
+    emptyEl.textContent = "No more packing exceptions";
+    emptyEl.style.display = "block";
+    emptyEl.style.color = "green";
+    listEl.innerHTML = `
+      <div class="packing-empty-state">
+        <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
+      </div>
+    `;
+    return;
+  }
+
+  emptyEl.style.display = "none";
+  emptyEl.style.color = "";
+
+  if (!window.currentPackingModePage) {
+    listEl.innerHTML = `
+      <div class="packing-mode-home">
+        <div class="packing-mode-card" onclick="openPackingModePage('missing')">
+          <div class="packing-mode-title">Missing SKU</div>
+          <div class="packing-mode-count">Total ${missingItems.length} totes</div>
+        </div>
+
+        <div class="packing-mode-card" onclick="openPackingModePage('additional')">
+          <div class="packing-mode-title">Additional SKU</div>
+          <div class="packing-mode-count">Total ${additionalItems.length} totes</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (window.currentPackingModePage === "missing") {
+    renderPackingMissingPage(missingItems, listEl, emptyEl);
+    return;
+  }
+
+  if (window.currentPackingModePage === "additional") {
+    renderPackingAdditionalPage(additionalItems, listEl, emptyEl);
+    return;
+  }
 }
 
-function showPackingExceptionMode(key, mode) {
-  const allItems = getActiveExceptionItems();
-  const item = allItems.find(entry => entry.key === key);
-  const host = document.getElementById(`packing-mode-${key}`);
-  if (!item || !host) return;
-
-  const pickerOptions = getOngoingPickers().map(name => `<option value="${name}">${name}</option>`).join("");
-
-  if (mode === "missing") {
-    const missing = item.missingItems || [];
-    const firstMissing = missing[0] || {};
-    const suggestion = getSuggestedPickerForMissingSku({
-      aisle: firstMissing.aisle || item.aisle,
-      shelf: firstMissing.expectedBin || item.shelf
-    });
-
-    host.innerHTML = `
-      <div class="packing-exception-clean-card">
-        <div class="packing-exception-title">Missing SKU</div>
-
-        <div class="packing-exception-details">
-          <div><strong>SKU:</strong> ${firstMissing.scannedSku || item.sku || "-"}</div>
-          <div><strong>Aisle:</strong> ${firstMissing.aisle || item.aisle || "-"}</div>
-          <div><strong>Shelf:</strong> ${firstMissing.expectedBin || item.shelf || "-"}</div>
-        </div>
-
-        <div class="packing-exception-suggestion">
-          <div class="suggestion-label">Recommended picker</div>
-          <div class="suggestion-value">${suggestion ? suggestion.picker : "No active picker suggestion"}</div>
-          <div class="suggestion-reason">${suggestion ? suggestion.reason : "Assign manually."}</div>
-        </div>
-
-        ${suggestion ? `
-          <div class="packing-exception-actions">
-            <button onclick="assignSuggestedPackingReassignment('${key}', '${suggestion.picker}', '${suggestion.placement}')">
-              Assign to ${suggestion.picker}
-            </button>
-            <button class="secondary-btn" onclick="togglePackingOverride('${key}')">
-              Choose another picker
-            </button>
-          </div>
-        ` : ""}
-
-        <div id="packing-override-${key}" class="packing-exception-picker-select" style="display:${suggestion ? "none" : "block"};">
-          <label>Assign to picker</label>
-          <select id="pack-reassign-${key}">
-            <option value="">Select picker</option>
-            ${pickerOptions}
-          </select>
-          <div class="packing-exception-actions" style="margin-top:10px;">
-            <button onclick="savePackingMissingReassignment('${key}')">Save Reassignment</button>
-          </div>
-        </div>
+function renderPackingMissingPage(items, listEl, emptyEl) {
+  if (!items.length) {
+    emptyEl.textContent = "No missing SKU exceptions";
+    emptyEl.style.display = "block";
+    emptyEl.style.color = "green";
+    listEl.innerHTML = `
+      <div class="packing-empty-state">
+        <button class="secondary-btn" onclick="backToPackingModes()">Back</button>
+        <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
       </div>
     `;
-
-    const select = document.getElementById(`pack-reassign-${key}`);
-    if (select && suggestion) select.value = suggestion.picker;
-  } else {
-    host.innerHTML = `
-      <div class="packing-exception-clean-card">
-        <div class="packing-exception-title">Additional SKU</div>
-
-        <div class="packing-exception-details">
-          <div><strong>SKU(s):</strong> ${(item.additionalItems || []).map(x => x.scannedSku).filter(Boolean).join(", ") || item.sku || "-"}</div>
-          <div>This item can be physically removed and returned to bin.</div>
-        </div>
-
-        <div class="packing-exception-actions">
-          <button onclick="clearAdditionalPackingException('${key}')">Remove Tote Exception</button>
-        </div>
-      </div>
-    `;
+    return;
   }
+
+  emptyEl.style.display = "none";
+
+  listEl.innerHTML = `
+    <div class="packing-subpage-header">
+      <button class="secondary-btn" onclick="backToPackingModes()">← Back</button>
+      <div class="packing-subpage-title">Missing SKU</div>
+    </div>
+
+    <div class="exception-list">
+      ${items.map(item => {
+        const firstMissing = (item.missingItems || [])[0] || {};
+        const suggestion = getSuggestedPickerForMissingSku({
+          aisle: firstMissing.aisle || item.aisle,
+          shelf: firstMissing.expectedBin || item.shelf
+        });
+
+        const pickerOptions = getOngoingPickers().map(name => `<option value="${name}">${name}</option>`).join("");
+
+        return `
+          <div class="packing-exception-clean-card">
+            <div class="packing-exception-title">SO ${item.so}</div>
+
+            <div class="packing-exception-details">
+              <div><strong>SKU:</strong> ${firstMissing.scannedSku || item.sku || "-"}</div>
+              <div><strong>Reason:</strong> Missing SKU</div>
+              <div><strong>Aisle:</strong> ${firstMissing.aisle || item.aisle || "-"}</div>
+              <div><strong>Shelf:</strong> ${firstMissing.expectedBin || item.shelf || "-"}</div>
+            </div>
+
+            <div class="packing-exception-suggestion">
+              <div class="suggestion-label">Recommended picker</div>
+              <div class="suggestion-value">${suggestion ? suggestion.picker : "No active picker suggestion"}</div>
+              <div class="suggestion-reason">${suggestion ? suggestion.reason : "Assign manually."}</div>
+            </div>
+
+            ${suggestion ? `
+              <div class="packing-exception-actions">
+                <button onclick="assignSuggestedPackingReassignment('${item.key}', '${suggestion.picker}', '${suggestion.placement}')">
+                  Assign to ${suggestion.picker}
+                </button>
+                <button class="secondary-btn" onclick="togglePackingOverride('${item.key}')">Choose another picker</button>
+              </div>
+            ` : ""}
+
+            <div id="packing-override-${item.key}" class="packing-exception-picker-select" style="display:${suggestion ? "none" : "block"};">
+              <label>Assign to picker</label>
+              <select id="pack-reassign-${item.key}">
+                <option value="">Select picker</option>
+                ${pickerOptions}
+              </select>
+              <div class="packing-exception-actions" style="margin-top:10px;">
+                <button onclick="savePackingMissingReassignment('${item.key}')">Save Reassignment</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderPackingAdditionalPage(items, listEl, emptyEl) {
+  if (!items.length) {
+    emptyEl.textContent = "No additional SKU exceptions";
+    emptyEl.style.display = "block";
+    emptyEl.style.color = "green";
+    listEl.innerHTML = `
+      <div class="packing-empty-state">
+        <button class="secondary-btn" onclick="backToPackingModes()">Back</button>
+        <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
+      </div>
+    `;
+    return;
+  }
+
+  emptyEl.style.display = "none";
+
+  listEl.innerHTML = `
+    <div class="packing-subpage-header">
+      <button class="secondary-btn" onclick="backToPackingModes()">← Back</button>
+      <div class="packing-subpage-title">Additional SKU</div>
+    </div>
+
+    <div class="exception-list">
+      ${items.map(item => `
+        <div class="packing-exception-clean-card">
+          <div class="packing-exception-title">Tote ${item.toteLp}</div>
+
+          <div class="packing-exception-details">
+            <div><strong>Additional SKU(s):</strong> ${(item.additionalItems || []).map(x => x.scannedSku).filter(Boolean).join(", ") || item.sku || "-"}</div>
+            <div><strong>Returned items:</strong> ${(item.additionalItems || []).length}</div>
+          </div>
+
+          <div class="packing-exception-picker-select">
+            <label>Scan tote to clear exception</label>
+            <input type="text" id="pack-clear-scan-${item.key}" placeholder="Scan Tote LP" />
+          </div>
+
+          <div class="packing-exception-actions">
+            <button onclick="clearAdditionalPackingExceptionByScan('${item.key}')">Verify and Clear</button>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function togglePackingOverride(key) {
@@ -750,10 +863,26 @@ function completePackingReassignment(key, pickerName, placement) {
   if (!item) return;
 
   const firstMissing = (item.missingItems || [])[0] || {};
-  const relatedOrder = (window.appState.orders || []).find(order =>
-    String(order.so || "") === String(firstMissing.so || item.so) &&
-    String(order.sku || "").toUpperCase() === String(firstMissing.scannedSku || item.sku).toUpperCase()
+  const targetSo = String(firstMissing.so || item.so || "").trim();
+  const targetSku = String(firstMissing.scannedSku || item.sku || "").trim().toUpperCase();
+
+  let relatedOrder = (window.appState.orders || []).find(order =>
+    String(order.so || "").trim() === targetSo &&
+    String(order.sku || "").trim().toUpperCase() === targetSku
   );
+
+  if (!relatedOrder) {
+    relatedOrder = (window.appState.orders || []).find(order =>
+      String(order.sku || "").trim().toUpperCase() === targetSku &&
+      ["Ready for Packing", "Packed", "Exception", "Exception Reviewed", "Inventory Hold", "Damage Hold"].includes(order.status)
+    );
+  }
+
+  if (!relatedOrder) {
+    relatedOrder = (window.appState.orders || []).find(order =>
+      String(order.sku || "").trim().toUpperCase() === targetSku
+    );
+  }
 
   if (!relatedOrder) {
     alert("Could not find the original order line for reassignment.");
@@ -815,10 +944,24 @@ function savePackingMissingReassignment(key) {
   completePackingReassignment(key, pickerName, placement);
 }
 
-function clearAdditionalPackingException(key) {
+function clearAdditionalPackingExceptionByScan(key) {
   const allItems = getActiveExceptionItems();
   const item = allItems.find(entry => entry.key === key);
   if (!item) return;
+
+  const input = document.getElementById(`pack-clear-scan-${key}`);
+  const scanned = String(input ? input.value : "").trim().toUpperCase();
+  const expected = String(item.toteLp || "").trim().toUpperCase();
+
+  if (!scanned) {
+    alert("Scan Tote LP first.");
+    return;
+  }
+
+  if (scanned !== expected) {
+    alert("Tote LP does not match.");
+    return;
+  }
 
   delete window.appState.sickTotes[item.toteLp];
 
@@ -916,7 +1059,7 @@ function saveExceptionDecision(key) {
     order.adminReviewedAt = new Date().toISOString();
 
   } else if (item.type === "sick") {
-    alert("For packing exceptions, choose Missing SKU or Additional SKU and use the action shown there.");
+    alert("For packing exceptions, use Missing SKU or Additional SKU pages.");
     return;
   }
 
@@ -925,7 +1068,10 @@ function saveExceptionDecision(key) {
     decision,
     comment,
     imageName,
-    reviewedAt: new Date().toISOString()
+    reviewedAt: new Date().toISOString(),
+    handledBy: "Admin",
+    exceptionType: "Picking Exception",
+    resolutionType: decision
   });
 
   saveState();
