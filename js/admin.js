@@ -299,8 +299,8 @@ function renderAdminSummary() {
   const summaryEl = document.getElementById("adminSummary");
   if (!summaryEl) return;
 
-  if (!window.appState.orders.length) {
-    summaryEl.innerHTML = "<p>No orders imported yet.</p>";
+  if (!window.appState.orders || !window.appState.orders.length) {
+    summaryEl.innerHTML = "";
     return;
   }
 
@@ -333,30 +333,32 @@ function renderAdminSummary() {
 
   summaryEl.innerHTML = `
     <h3>Picker Assignment Summary</h3>
-    <table border="1" cellpadding="8" cellspacing="0" style="margin:20px auto; background:white;">
-      <thead>
-        <tr>
-          <th>Picker</th>
-          <th>Remaining / Total</th>
-          <th>Completed</th>
-          <th>Exceptions</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${Object.entries(counts).map(([picker, c]) => `
+    <div class="table-scroll-wrap">
+      <table border="1" cellpadding="8" cellspacing="0" style="margin:20px auto; background:white; min-width:640px;">
+        <thead>
           <tr>
-            <td>${picker}</td>
-            <td>${c.remaining} / ${c.total}</td>
-            <td>${c.completed}</td>
-            <td>
-              <button onclick="showExceptionDetails('${picker}')" style="padding:4px 10px; border-radius:6px; cursor:pointer;">
-                ${c.exception}
-              </button>
-            </td>
+            <th>Picker</th>
+            <th>Remaining / Total</th>
+            <th>Completed</th>
+            <th>Exceptions</th>
           </tr>
-        `).join("")}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          ${Object.entries(counts).map(([picker, c]) => `
+            <tr>
+              <td>${picker}</td>
+              <td>${c.remaining} / ${c.total}</td>
+              <td>${c.completed}</td>
+              <td>
+                <button onclick="showExceptionDetails('${picker}')" style="padding:4px 10px; border-radius:6px; cursor:pointer;">
+                  ${c.exception}
+                </button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
   `;
 
   renderSickToteList();
@@ -632,7 +634,7 @@ function renderExceptionHandling() {
     emptyEl.style.display = "none";
     emptyEl.style.color = "";
 
-    const pickerOptions = getOngoingPickers().map(name => `<option value="${name}">${name}</option>`).join("");
+    const pickerOptions = (window.appState.pickers || []).map(name => `<option value="${name}">${name}</option>`).join("");
 
     listEl.innerHTML = `<div class="exception-list">${items.map(item => `
       <div class="exception-card">
@@ -705,15 +707,15 @@ function renderExceptionHandling() {
   if (!window.currentPackingModePage) {
     listEl.innerHTML = `
       <div class="packing-mode-home">
-        <div class="packing-mode-card" onclick="openPackingModePage('missing')">
+        <button class="packing-mode-card" type="button" onclick="openPackingModePage('missing')">
           <div class="packing-mode-title">Missing SKU</div>
           <div class="packing-mode-count">Total ${missingItems.length} totes</div>
-        </div>
+        </button>
 
-        <div class="packing-mode-card" onclick="openPackingModePage('additional')">
+        <button class="packing-mode-card" type="button" onclick="openPackingModePage('additional')">
           <div class="packing-mode-title">Additional SKU</div>
           <div class="packing-mode-count">Total ${additionalItems.length} totes</div>
-        </div>
+        </button>
       </div>
     `;
     return;
@@ -760,7 +762,7 @@ function renderPackingMissingPage(items, listEl, emptyEl) {
           shelf: firstMissing.expectedBin || item.shelf
         });
 
-        const pickerOptions = getOngoingPickers().map(name => `<option value="${name}">${name}</option>`).join("");
+        const pickerOptions = (window.appState.pickers || []).map(name => `<option value="${name}">${name}</option>`).join("");
 
         return `
           <div class="packing-exception-clean-card">
@@ -950,13 +952,15 @@ function clearAdditionalPackingExceptionByScan(key) {
   if (!item) return;
 
   const input = document.getElementById(`pack-clear-scan-${key}`);
-  const scanned = String(input ? input.value : "").trim().toUpperCase();
+  const parsed = parsePackerToteLP(input ? input.value : "");
   const expected = String(item.toteLp || "").trim().toUpperCase();
 
-  if (!scanned) {
+  if (!parsed.isValid) {
     alert("Scan Tote LP first.");
     return;
   }
+
+  const scanned = String(parsed.normalized || "").trim().toUpperCase();
 
   if (scanned !== expected) {
     alert("Tote LP does not match.");
