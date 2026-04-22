@@ -1,3 +1,55 @@
+function getLoggedInPickerName() {
+  return window.appState.currentUser || "";
+}
+
+function getCurrentPickerOrders() {
+  const pickerName = getLoggedInPickerName();
+  return (window.appState.orders || []).filter(order => order.assignedPicker === pickerName);
+}
+
+function getNewAssignedCount() {
+  return getCurrentPickerOrders().filter(order =>
+    order.status === "Assigned" && order.isNewAssignedPick === true
+  ).length;
+}
+
+function getVisiblePickerOrders() {
+  const pickerOrders = getCurrentPickerOrders();
+
+  const hasOngoingOldPicks = pickerOrders.some(order =>
+    !order.isNewAssignedPick &&
+    ["Assigned", "In Progress", "Exception"].includes(order.status)
+  );
+
+  if (hasOngoingOldPicks) {
+    return pickerOrders.filter(order =>
+      ["Assigned", "In Progress", "Exception"].includes(order.status)
+    );
+  }
+
+  const newPicks = pickerOrders.filter(order =>
+    order.isNewAssignedPick &&
+    ["Assigned", "In Progress", "Exception"].includes(order.status)
+  );
+
+  return newPicks.length
+    ? newPicks
+    : pickerOrders.filter(order =>
+        ["Assigned", "In Progress", "Exception"].includes(order.status)
+      );
+}
+
+function clearSeenNewAssignedFlags(orders) {
+  let changed = false;
+  (orders || []).forEach(order => {
+    if (order.isNewAssignedPick) {
+      order.isNewAssignedPick = false;
+      changed = true;
+    }
+  });
+  if (changed && typeof saveState === "function") saveState();
+}
+
 function loginPicker() {
   const pickerName = document.getElementById("pickerName").value;
   window.appState.currentRole = "Picker";
@@ -7,7 +59,7 @@ function loginPicker() {
 }
 
 function logoutPicker() {
-  if (typeof logoutUser === 'function') {
+  if (typeof logoutUser === "function") {
     logoutUser();
     return;
   }
@@ -46,11 +98,24 @@ function renderPickerStatusBlocks(orders) {
   const assigned = orders.filter(order => order.status === "Assigned").length;
   const inProgress = orders.filter(order => order.status === "In Progress").length;
   const completed = orders.filter(order => ["Ready for Packing", "Packed", "Exception"].includes(order.status)).length;
+  const newAssignedCount = getNewAssignedCount();
 
   container.innerHTML = `
-    <button class="picker-status-card" type="button" onclick="openPickerTickets()"><div class="label">Assigned</div><div class="value">${assigned}</div></button>
-    <button class="picker-status-card" type="button" onclick="openPickerTickets()"><div class="label">In Progress</div><div class="value">${inProgress}</div></button>
-    <button class="picker-status-card" type="button" onclick="openPickerTickets()"><div class="label">Completed</div><div class="value">${completed}</div></button>
+    <button class="picker-status-card" type="button" onclick="openPickerTickets()">
+      <div class="label">
+        Assigned
+        ${newAssignedCount > 0 ? `<span class="new-pick-badge">!</span>` : ``}
+      </div>
+      <div class="value">${assigned}</div>
+    </button>
+    <button class="picker-status-card" type="button" onclick="openPickerTickets()">
+      <div class="label">In Progress</div>
+      <div class="value">${inProgress}</div>
+    </button>
+    <button class="picker-status-card" type="button" onclick="openPickerTickets()">
+      <div class="label">Completed</div>
+      <div class="value">${completed}</div>
+    </button>
   `;
 
   if (actions) {
@@ -98,8 +163,10 @@ function renderPickerDashboard() {
 
   nameEl.textContent = "Welcome, " + pickerName;
 
-  const orders = getOrdersForPicker(pickerName);
-  renderPickerStatusBlocks(orders);
+  const allOrders = getOrdersForPicker(pickerName);
+  renderPickerStatusBlocks(allOrders);
+
+  const orders = getVisiblePickerOrders();
 
   if (!orders.length) {
     ordersEl.innerHTML = "<p>No orders assigned.</p>";
@@ -127,6 +194,12 @@ function renderPickerDashboard() {
     return;
   }
 
+  orders.sort((a, b) => {
+    const aNew = a.isNewAssignedPick ? 1 : 0;
+    const bNew = b.isNewAssignedPick ? 1 : 0;
+    return bNew - aNew;
+  });
+
   ordersEl.innerHTML = orders.map(order => {
     const isDone = order.status === "Ready for Packing" || order.status === "Packed";
     const isException = order.status === "Exception";
@@ -144,6 +217,7 @@ function renderPickerDashboard() {
           <h3>
             SO #${order.so}
             <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span>
+            ${order.isNewAssignedPick ? `<span class="new-pick-badge">!</span>` : ``}
           </h3>
           <div class="order-meta"><strong>Aisle:</strong> ${order.aisle || order.binCode || "-"}</div>
           <div class="order-carrier">Carrier: ${order.carrier}</div>
@@ -169,6 +243,7 @@ function startPick(so) {
   const order = (window.appState.orders || []).find(o => String(o.so) === String(so));
   if (!order) return;
 
+  order.isNewAssignedPick = false;
   order.status = "In Progress";
   order.tripStartTime = order.tripStartTime || new Date().toISOString();
   window.appState.currentOrder = order;
@@ -304,7 +379,7 @@ function validateTote() {
   if (!rawTote) {
     msg.textContent = "Invalid : Scan Different Tote";
     msg.className = "message-box message-error";
-    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value=""; window.setTimeout(() => toteInput.focus(), 50); }
+    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50); }
     return;
   }
 
@@ -313,7 +388,7 @@ function validateTote() {
   if (!parsed.isValid) {
     msg.textContent = "Invalid : Scan Different Tote";
     msg.className = "message-box message-error";
-    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value=""; window.setTimeout(() => toteInput.focus(), 50); }
+    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50); }
     return;
   }
 
@@ -322,7 +397,6 @@ function validateTote() {
   const orderCarrier = String(order.carrier || "").toUpperCase().replace(/\s+/g, "");
   const currentPicker = String(window.appState.currentUser || "");
 
-  // Only carrier validation here
   const carrierMatch =
     toteCarrier === orderCarrier ||
     (toteCarrier === "USPS" && orderCarrier === "USPOSTAL") ||
@@ -331,7 +405,7 @@ function validateTote() {
   if (!carrierMatch) {
     msg.textContent = "Invalid : Scan Different Tote";
     msg.className = "message-box message-error";
-    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value=""; window.setTimeout(() => toteInput.focus(), 50); }
+    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50); }
     return;
   }
 
@@ -341,13 +415,12 @@ function validateTote() {
   if (window.appState.sickTotes[toteLp]) {
     msg.textContent = "SICK TOTE - scan a fresh tote";
     msg.className = "message-box message-error";
-    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value=""; window.setTimeout(() => toteInput.focus(), 50); }
+    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50); }
     return;
   }
 
   const toteRec = window.appState.toteRegistry[toteLp];
 
-  // Final hard active-tote block
   if (
     toteRec &&
     toteRec.status === "ACTIVE" &&
@@ -356,7 +429,7 @@ function validateTote() {
   ) {
     msg.textContent = "Invalid : Scan Different Tote";
     msg.className = "message-box message-error";
-    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value=""; window.setTimeout(() => toteInput.focus(), 50); }
+    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50); }
     return;
   }
 
@@ -369,16 +442,15 @@ function validateTote() {
   if (priorCarrierOrder && String(priorCarrierOrder.toteLp).toUpperCase() !== toteLp) {
     msg.textContent = "Invalid : Scan Different Tote";
     msg.className = "message-box message-error";
-    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value=""; window.setTimeout(() => toteInput.focus(), 50); }
+    const toteInput = document.getElementById("manualToteInput"); if (toteInput) { toteInput.value = ""; window.setTimeout(() => toteInput.focus(), 50); }
     return;
   }
 
-  // Save full tote LP against SO
   order.toteLp = toteLp;
   order.status = "Ready for Packing";
   order.tripEndTime = new Date().toISOString();
+  order.isNewAssignedPick = false;
 
-  // Lock tote to picker until pack validation releases it
   window.appState.toteRegistry[toteLp] = {
     status: "ACTIVE",
     assignedPicker: currentPicker,
@@ -399,5 +471,12 @@ function validateTote() {
 
   showScreen("pickerTickets");
 }
-window.openPickerTickets = openPickerTickets;
+
+window.openPickerTickets = function () {
+  const visibleOrders = getVisiblePickerOrders();
+  clearSeenNewAssignedFlags(visibleOrders);
+  renderPickerDashboard();
+  showScreen("pickerTickets");
+};
+
 window.backToPickerSummary = backToPickerSummary;
