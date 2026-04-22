@@ -106,11 +106,14 @@ function resetTrialPicks() {
     order.toteLp = null;
     order.exceptionReason = null;
     order.packTime = null;
+    order.isNewAssignedPick = false;
+    order.newAssignedAt = null;
   });
 
   window.appState.currentOrder = null;
   window.appState.sickTotes = {};
   window.appState.toteRegistry = {};
+  window.appState.resolvedExceptions = [];
   saveState();
 
   renderAdminSummary();
@@ -203,14 +206,14 @@ function downloadExceptionsExcel() {
   }
 
   const exportRows = active.map(item => ({
-    "Type": item.type === "sick" ? "Sick Tote" : "Picking",
-    "Picker": item.picker || "",
+    Type: item.type === "sick" ? "Sick Tote" : "Picking",
+    Picker: item.picker || "",
     "SO No": item.so || "",
-    "SKU": item.sku || "",
-    "Carrier": item.carrier || "",
+    SKU: item.sku || "",
+    Carrier: item.carrier || "",
     "Tote LP": item.toteLp || "",
-    "Aisle": item.aisle || "",
-    "Reason": item.reason || ""
+    Aisle: item.aisle || "",
+    Reason: item.reason || ""
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(exportRows);
@@ -686,21 +689,31 @@ function showPackingExceptionMode(key, mode) {
         </div>
 
         <div class="packing-exception-suggestion">
-          <div class="suggestion-label">Suggested picker</div>
+          <div class="suggestion-label">Recommended picker</div>
           <div class="suggestion-value">${suggestion ? suggestion.picker : "No active picker suggestion"}</div>
           <div class="suggestion-reason">${suggestion ? suggestion.reason : "Assign manually."}</div>
         </div>
 
-        <div class="packing-exception-picker-select">
+        ${suggestion ? `
+          <div class="packing-exception-actions">
+            <button onclick="assignSuggestedPackingReassignment('${key}', '${suggestion.picker}', '${suggestion.placement}')">
+              Assign to ${suggestion.picker}
+            </button>
+            <button class="secondary-btn" onclick="togglePackingOverride('${key}')">
+              Choose another picker
+            </button>
+          </div>
+        ` : ""}
+
+        <div id="packing-override-${key}" class="packing-exception-picker-select" style="display:${suggestion ? "none" : "block"};">
           <label>Assign to picker</label>
           <select id="pack-reassign-${key}">
             <option value="">Select picker</option>
             ${pickerOptions}
           </select>
-        </div>
-
-        <div class="packing-exception-actions">
-          <button onclick="savePackingMissingReassignment('${key}')">Save Reassignment</button>
+          <div class="packing-exception-actions" style="margin-top:10px;">
+            <button onclick="savePackingMissingReassignment('${key}')">Save Reassignment</button>
+          </div>
         </div>
       </div>
     `;
@@ -724,17 +737,17 @@ function showPackingExceptionMode(key, mode) {
     `;
   }
 }
-function savePackingMissingReassignment(key) {
+
+function togglePackingOverride(key) {
+  const el = document.getElementById(`packing-override-${key}`);
+  if (!el) return;
+  el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+function completePackingReassignment(key, pickerName, placement) {
   const allItems = getActiveExceptionItems();
   const item = allItems.find(entry => entry.key === key);
   if (!item) return;
-
-  const pickerEl = document.getElementById(`pack-reassign-${key}`);
-  const pickerName = pickerEl ? pickerEl.value : "";
-  if (!pickerName) {
-    alert("Select a picker first.");
-    return;
-  }
 
   const firstMissing = (item.missingItems || [])[0] || {};
   const relatedOrder = (window.appState.orders || []).find(order =>
@@ -747,13 +760,9 @@ function savePackingMissingReassignment(key) {
     return;
   }
 
-  const suggestion = getSuggestedPickerForMissingSku({
-    aisle: firstMissing.aisle || relatedOrder.aisle || relatedOrder.binCode || "-",
-    shelf: firstMissing.expectedBin || relatedOrder.binCode || "-"
-  });
-
-  const placement = suggestion && suggestion.picker === pickerName ? suggestion.placement : "end_queue";
-  insertReassignedOrderByAisle(relatedOrder, pickerName, placement);
+  insertReassignedOrderByAisle(relatedOrder, pickerName, placement || "end_queue");
+  relatedOrder.isNewAssignedPick = true;
+  relatedOrder.newAssignedAt = new Date().toISOString();
 
   delete window.appState.sickTotes[item.toteLp];
 
@@ -774,6 +783,36 @@ function savePackingMissingReassignment(key) {
   if (typeof renderPackerDashboard === "function") renderPackerDashboard();
   if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
   renderExceptionHandling();
+}
+
+function assignSuggestedPackingReassignment(key, pickerName, placement) {
+  if (!pickerName) {
+    alert("No suggested picker available.");
+    return;
+  }
+  completePackingReassignment(key, pickerName, placement || "end_queue");
+}
+
+function savePackingMissingReassignment(key) {
+  const pickerEl = document.getElementById(`pack-reassign-${key}`);
+  const pickerName = pickerEl ? pickerEl.value : "";
+  if (!pickerName) {
+    alert("Select a picker first.");
+    return;
+  }
+
+  const allItems = getActiveExceptionItems();
+  const item = allItems.find(entry => entry.key === key);
+  if (!item) return;
+
+  const firstMissing = (item.missingItems || [])[0] || {};
+  const suggestion = getSuggestedPickerForMissingSku({
+    aisle: firstMissing.aisle || item.aisle,
+    shelf: firstMissing.expectedBin || item.shelf
+  });
+
+  const placement = suggestion && suggestion.picker === pickerName ? suggestion.placement : "end_queue";
+  completePackingReassignment(key, pickerName, placement);
 }
 
 function clearAdditionalPackingException(key) {
@@ -845,19 +884,28 @@ function saveExceptionDecision(key) {
       order.status = "Assigned";
       order.exceptionReason = null;
       order.adminPriority = true;
+      order.isNewAssignedPick = true;
+      order.newAssignedAt = new Date().toISOString();
       pushOrderToTopForPicker(order);
+
     } else if (decision === "Reassign") {
       order.status = "Assigned";
       order.exceptionReason = null;
       order.assignedPicker = reassignEl.value;
       order.adminPriority = true;
+      order.isNewAssignedPick = true;
+      order.newAssignedAt = new Date().toISOString();
       pushOrderToTopForPicker(order);
+
     } else if (decision === "Approve Exception") {
       order.status = "Exception Reviewed";
+
     } else if (decision === "Short Pick / Inventory Issue") {
       order.status = "Inventory Hold";
+
     } else if (decision === "Damage Hold") {
       order.status = "Damage Hold";
+
     } else if (decision === "Other") {
       order.status = "Exception Reviewed";
     }
@@ -866,6 +914,7 @@ function saveExceptionDecision(key) {
     order.adminComment = comment || null;
     order.adminImage = imageName || null;
     order.adminReviewedAt = new Date().toISOString();
+
   } else if (item.type === "sick") {
     alert("For packing exceptions, choose Missing SKU or Additional SKU and use the action shown there.");
     return;
