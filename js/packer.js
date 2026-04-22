@@ -83,33 +83,36 @@ function getPackerOrderKey(order) {
   return String(order.so || "");
 }
 
-function getNextReadyToteLp() {
+function getAllReadyTotes() {
   ensurePackerStateObjects();
   cleanupRecentPackedTotes();
 
   const orders = window.appState.orders || [];
   const sickTotes = window.appState.sickTotes || {};
 
-  const readyOrders = orders.filter(order =>
-    order.status === "Ready for Packing" &&
-    order.toteLp &&
-    !sickTotes[String(order.toteLp || "").toUpperCase()] &&
-    !isToteRecentlyPacked(order.toteLp)
-  );
-
-  if (!readyOrders.length) return "";
-
   const seen = new Set();
-  const uniqueReady = [];
-  readyOrders.forEach(order => {
+  const totes = [];
+
+  orders.forEach(order => {
     const tote = String(order.toteLp || "").toUpperCase();
-    if (!seen.has(tote)) {
+    if (
+      order.status === "Ready for Packing" &&
+      tote &&
+      !sickTotes[tote] &&
+      !isToteRecentlyPacked(tote) &&
+      !seen.has(tote)
+    ) {
       seen.add(tote);
-      uniqueReady.push(order);
+      totes.push(tote);
     }
   });
 
-  return uniqueReady.length ? String(uniqueReady[0].toteLp || "").toUpperCase() : "";
+  return totes;
+}
+
+function getNextReadyToteLp() {
+  const totes = getAllReadyTotes();
+  return totes.length ? totes[0] : "";
 }
 
 function markToteSick(toteLp, exceptions, carrier = "") {
@@ -420,14 +423,12 @@ function validatePackerSession() {
     }
   });
 
-  // Mark tote as done and free it
   window.appState.toteRegistry[window.packerSession.toteLp] = {
     status: "DONE",
     assignedPicker: null,
     updatedAt: new Date().toISOString()
   };
 
-  // Prevent immediate rescan for 15 minutes
   markToteRecentlyPacked(window.packerSession.toteLp);
 
   saveState();
@@ -441,6 +442,56 @@ function validatePackerSession() {
   toteMsg.className = "message-box message-success";
 }
 
+function renderPackerLoadedToteCards(toteOrders, scannedSOSet) {
+  return `
+    <div class="packer-cards-wrap">
+      ${toteOrders.map(order => {
+        const soKey = getPackerOrderKey(order);
+        const isVerified = scannedSOSet.has(soKey);
+        const isPacked = order.status === "Packed";
+
+        let statusText = "Pending";
+        let statusClass = "packer-status-pending";
+
+        if (isPacked) {
+          statusText = "Packed";
+          statusClass = "packer-status-packed";
+        } else if (isVerified) {
+          statusText = "Verified";
+          statusClass = "packer-status-verified";
+        }
+
+        return `
+          <div class="packer-mobile-card">
+            <div class="packer-mobile-row"><span>SO</span><strong>${order.so}</strong></div>
+            <div class="packer-mobile-row"><span>SKU</span><strong class="wrap-anywhere">${order.sku}</strong></div>
+            <div class="packer-mobile-row"><span>Carrier</span><strong>${order.carrier}</strong></div>
+            <div class="packer-mobile-row"><span>Picker</span><strong>${order.assignedPicker || "-"}</strong></div>
+            <div class="packer-mobile-row"><span>Status</span><strong class="${statusClass}">${statusText}</strong></div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderPackerExceptionCards(exceptions) {
+  return `
+    <div class="packer-cards-wrap">
+      ${exceptions.map(item => `
+        <div class="packer-mobile-card">
+          <div class="packer-mobile-row"><span>Scanned SKU</span><strong class="wrap-anywhere">${item.scannedSku}</strong></div>
+          <div class="packer-mobile-row"><span>Related SO</span><strong>${item.so}</strong></div>
+          <div class="packer-mobile-row"><span>Carrier</span><strong>${item.carrier}</strong></div>
+          <div class="packer-mobile-row"><span>Assigned Picker</span><strong>${item.picker}</strong></div>
+          <div class="packer-mobile-row"><span>Expected Tote</span><strong class="wrap-anywhere">${item.expectedTote || "-"}</strong></div>
+          <div class="packer-mobile-row"><span>Exception</span><strong class="wrap-anywhere">${item.reason}</strong></div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderPackerDashboard() {
   const listEl = document.getElementById("packerReadyList");
   const exEl = document.getElementById("packerExceptionList");
@@ -448,23 +499,15 @@ function renderPackerDashboard() {
 
   cleanupRecentPackedTotes();
 
-  // If no tote loaded, show only the next Tote LP to scan
   if (!window.packerSession.toteLp) {
     const nextTote = getNextReadyToteLp();
 
-    listEl.innerHTML = nextTote
-      ? `
-        <div style="background:#fff; border-radius:16px; padding:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
-          <div style="font-size:13px; color:#666; margin-bottom:8px;">Next Tote LP</div>
-          <div style="font-size:24px; font-weight:700; color:#111;">${nextTote}</div>
-        </div>
-      `
-      : `
-        <div style="background:#fff; border-radius:16px; padding:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
-          <div style="font-size:13px; color:#666; margin-bottom:8px;">Next Tote LP</div>
-          <div style="font-size:20px; font-weight:700; color:#111;">No totes ready</div>
-        </div>
-      `;
+    listEl.innerHTML = `
+      <div class="simple-pack-queue-card">
+        <div class="simple-pack-label">Next Tote LP</div>
+        <div class="simple-pack-value">${nextTote || "No totes ready"}</div>
+      </div>
+    `;
 
     exEl.innerHTML = "";
     return;
@@ -474,46 +517,8 @@ function renderPackerDashboard() {
   const scannedSOSet = new Set(window.packerSession.scannedSOs || []);
 
   listEl.innerHTML = `
-    <h3 class="packer-list-title">Tote Packing List - ${window.packerSession.toteLp}</h3>
-    <table border="1" cellpadding="8" cellspacing="0" class="packer-table">
-      <thead>
-        <tr>
-          <th>SO No</th>
-          <th>SKU</th>
-          <th>Carrier</th>
-          <th>Assigned Picker</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${toteOrders.map(order => {
-          const soKey = getPackerOrderKey(order);
-          const isVerified = scannedSOSet.has(soKey);
-          const isPacked = order.status === "Packed";
-
-          let rowStyle = "";
-          let statusText = `<span class="packer-status-pending">Pending</span>`;
-
-          if (isPacked) {
-            rowStyle = "background:#e8f8ec;";
-            statusText = `<span class="packer-status-packed">Packed</span>`;
-          } else if (isVerified) {
-            rowStyle = "background:#f1fff4;";
-            statusText = `<span class="packer-status-verified">Verified</span>`;
-          }
-
-          return `
-            <tr style="${rowStyle}">
-              <td>${order.so}</td>
-              <td>${order.sku}</td>
-              <td>${order.carrier}</td>
-              <td>${order.assignedPicker || "-"}</td>
-              <td>${statusText}</td>
-            </tr>
-          `;
-        }).join("")}
-      </tbody>
-    </table>
+    <h3 class="packer-list-title wrap-anywhere">Tote Packing List - ${window.packerSession.toteLp}</h3>
+    ${renderPackerLoadedToteCards(toteOrders, scannedSOSet)}
   `;
 
   if (!window.packerSession.exceptions.length) {
@@ -523,30 +528,7 @@ function renderPackerDashboard() {
 
   exEl.innerHTML = `
     <h3 class="packer-list-title">Packing Exceptions</h3>
-    <table border="1" cellpadding="8" cellspacing="0" class="packer-table">
-      <thead>
-        <tr>
-          <th>Scanned SKU</th>
-          <th>Related SO</th>
-          <th>Carrier</th>
-          <th>Assigned Picker</th>
-          <th>Expected Tote</th>
-          <th>Exception</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${window.packerSession.exceptions.map(item => `
-          <tr>
-            <td>${item.scannedSku}</td>
-            <td>${item.so}</td>
-            <td>${item.carrier}</td>
-            <td>${item.picker}</td>
-            <td>${item.expectedTote || "-"}</td>
-            <td>${item.reason}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
+    ${renderPackerExceptionCards(window.packerSession.exceptions)}
   `;
 }
 
