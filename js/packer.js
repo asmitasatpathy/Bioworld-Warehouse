@@ -463,11 +463,14 @@ function renderPackerLoadedToteCards(toteOrders, scannedSOSet) {
 
         return `
           <div class="packer-mobile-card">
-            <div class="packer-mobile-row"><span>SO</span><strong>${order.so}</strong></div>
-            <div class="packer-mobile-row"><span>SKU</span><strong class="wrap-anywhere">${order.sku}</strong></div>
-            <div class="packer-mobile-row"><span>Carrier</span><strong>${order.carrier}</strong></div>
-            <div class="packer-mobile-row"><span>Picker</span><strong>${order.assignedPicker || "-"}</strong></div>
-            <div class="packer-mobile-row"><span>Status</span><strong class="${statusClass}">${statusText}</strong></div>
+            <div class="packer-mobile-row">
+              <span>SKU</span>
+              <strong class="wrap-anywhere">${order.sku}</strong>
+            </div>
+            <div class="packer-mobile-row">
+              <span>Status</span>
+              <strong class="${statusClass}">${statusText}</strong>
+            </div>
           </div>
         `;
       }).join("")}
