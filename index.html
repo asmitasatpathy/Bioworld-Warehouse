@@ -248,7 +248,7 @@
             <h1 class="page-title">Picker Profile</h1>
             <p id="loggedInPickerName" class="page-subtitle">Welcome, Asmita</p>
           </div>
-          </div>
+        </div>
 
         <div class="picker-login-row card-inline" style="display:none;">
           <select id="pickerName">
@@ -273,7 +273,7 @@
             <p class="page-subtitle">Current lot for the logged-in picker</p>
           </div>
           <div class="header-inline">
-            <button class="secondary-btn" onclick="backToPickerSummary()">Back</button>
+            <button id="pickerTicketsBackBtn" class="secondary-btn" onclick="backToPickerSummary()">Back</button>
           </div>
         </div>
         <div id="pickerCompletionBanner" class="picker-completion-banner" style="display:none;"></div>
@@ -316,7 +316,7 @@
           <div class="scan-section mobile-section-card">
             <label>SKU</label>
             <input id="manualSkuInput" placeholder="Scan SKU" />
-                      </div>
+          </div>
 
           <div id="skuValidationMessage" class="message-box"></div>
 
@@ -328,12 +328,10 @@
             <div class="scan-section mobile-section-card">
               <label>Tote LP</label>
               <input id="manualToteInput" placeholder="Scan Tote LP" />
-                          </div>
+            </div>
 
             <div id="toteValidationMessage" class="message-box"></div>
           </div>
-
-          
         </div>
       </section>
 
@@ -351,8 +349,6 @@
             <input id="packerToteInput" placeholder="Scan Tote LP" />
           </div>
 
-          
-
           <div id="packerToteMessage" class="message-box"></div>
 
           <div class="packer-input-row mobile-section-card">
@@ -360,23 +356,16 @@
             <input id="packerSkuInput" placeholder="Scan SKU QR" />
           </div>
 
-          
-
           <div id="packerSkuMessage" class="message-box"></div>
 
           <div class="scan-btn-row">
             <button onclick="validatePackerSession()">Validate Tote</button>
             <button onclick="togglePackerExceptions()">Show Exceptions</button>
           </div>
-
-          
         </div>
 
         <div id="packerReadyList" class="packer-section"></div>
-        <div class="dashboard-card-wide">
-          <h3>Ready-to-Pack Queue</h3>
-          <div id="packerReadyQueueTable" class="table-scroll"></div>
-        </div>
+
         <div id="packerExceptionSection" class="packer-section" style="display:none;">
           <div id="packerExceptionList"></div>
         </div>
@@ -418,7 +407,7 @@
         <div id="adminSickToteList"></div>
       </section>
 
-            <section id="adminExceptionScreen" class="screen">
+      <section id="adminExceptionScreen" class="screen">
         <div class="screen-header">
           <div>
             <h1 class="page-title">Exception Handling</h1>
@@ -438,19 +427,11 @@
             <button id="exceptionTabPicking" class="secondary-btn active-toggle" onclick="setExceptionCategory('pick')">Picking Exceptions</button>
             <button id="exceptionTabPacking" class="secondary-btn" onclick="setExceptionCategory('pack')">Packing Exceptions</button>
           </div>
-
-          <div id="packingExceptionControls" class="admin-sick-row" style="display:none;">
-            <label>Clear Sick Tote</label>
-            <input id="adminSickToteInput" placeholder="Enter Tote LP e.g. TOTE|FEDEX|001" />
-            <button onclick="clearSickTote()">Remove Tote Exception</button>
-          </div>
         </div>
 
         <div id="adminNoExceptionMessage" class="message-box message-success" style="display:none; margin-bottom:16px;">No more exceptions</div>
         <div id="adminExceptionList"></div>
       </section>
-
-
     </main>
   </div>
 
