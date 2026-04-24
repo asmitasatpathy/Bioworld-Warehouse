@@ -287,7 +287,7 @@ function renderAdminSummary() {
   summaryEl.innerHTML = `
     <h3>Picker Assignment Summary</h3>
     <div class="table-scroll-wrap">
-      <table border="1" cellpadding="6" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
+      <table border="1" cellpadding="8" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
         <thead>
           <tr>
             <th>Picker</th>
@@ -303,7 +303,8 @@ function renderAdminSummary() {
               <td>${c.remaining} / ${c.total}</td>
               <td>${c.completed}</td>
               <td>
-                <button onclick="showExceptionDetails('${picker}')" style="padding:4px 8px; border-radius:6px; cursor:pointer;">
+                <button onclick="showExceptionDetails('${picker}')" class="${c.exception > 0 ? "exception-count-btn has-exception" : "exception-count-btn"}">
+                  ${c.exception > 0 ? `<span class="table-exception-badge">!</span>` : ``}
                   ${c.exception}
                 </button>
               </td>
@@ -315,7 +316,6 @@ function renderAdminSummary() {
   `;
 
   renderSickToteList();
-  updateAdminExceptionBadge();
 
   if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
 }
