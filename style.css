@@ -1596,3 +1596,14 @@ label {
   font-weight: 900;
   border: 2px solid #fff;
 }
+.admin-exception-icon-btn,
+#adminExceptionBadge,
+.admin-exception-badge {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+}
