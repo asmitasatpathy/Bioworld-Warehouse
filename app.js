@@ -236,6 +236,7 @@
       const reason = ex.reason || "Unspecified";
       const picker = ex.picker || "Unassigned";
       reasons[reason] = (reasons[reason] || 0) + 1;
+      if (picker === "Admin") return;
       pickers[picker] = (pickers[picker] || 0) + 1;
     });
 
