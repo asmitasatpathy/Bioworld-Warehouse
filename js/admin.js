@@ -334,7 +334,7 @@ function renderAdminSummary() {
   summaryEl.innerHTML = `
     <h3>Picker Assignment Summary</h3>
     <div class="table-scroll-wrap">
-      <table border="1" cellpadding="8" cellspacing="0" style="margin:20px auto; background:white; min-width:640px;">
+     <table border="1" cellpadding="8" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
         <thead>
           <tr>
             <th>Picker</th>
