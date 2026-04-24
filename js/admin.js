@@ -143,49 +143,6 @@ function resetTrialPicks() {
   alert("Trial picks have been reset.");
 }
 
-function showExceptionDetails(pickerName) {
-  const detailsEl = document.getElementById("adminExceptionDetails");
-  if (!detailsEl) return;
-
-  const exceptions = window.appState.orders.filter(order =>
-    order.assignedPicker === pickerName && order.status === "Exception"
-  );
-
-  if (!exceptions.length) {
-    detailsEl.innerHTML = `<p style="margin-top:20px;">No exceptions for ${pickerName}.</p>`;
-    return;
-  }
-
-  detailsEl.innerHTML = `
-    <h3 style="margin-top:30px;">Exception Details - ${pickerName}</h3>
-    <div class="table-scroll-wrap">
-      <table border="1" cellpadding="8" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
-        <thead>
-          <tr>
-            <th>SO No</th>
-            <th>SKU</th>
-            <th>Bin No</th>
-            <th>Aisle</th>
-            <th>Date & Time</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${exceptions.map(order => `
-            <tr>
-              <td>${order.so}</td>
-              <td>${order.sku}</td>
-              <td>${order.binCode || ""}</td>
-              <td>${order.aisle || ""}</td>
-              <td>${order.tripEndTime ? new Date(order.tripEndTime).toLocaleString() : "-"}</td>
-              <td>${order.exceptionReason || "-"}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
 
 function downloadExceptionsExcel() {
   const active = getActiveExceptionItems();
@@ -248,6 +205,13 @@ function renderSickToteList() {
   `;
 }
 
+function showExceptionDetails(pickerName) {
+  // Instead of showing table → go to exception screen
+  if (typeof openExceptionHandling === "function") {
+    openExceptionHandling();
+  }
+}
+
 function renderAdminSummary() {
   const summaryEl = document.getElementById("adminSummary");
   if (!summaryEl) return;
@@ -303,9 +267,9 @@ function renderAdminSummary() {
               <td>${c.remaining} / ${c.total}</td>
               <td>${c.completed}</td>
               <td>
-                <button onclick="showExceptionDetails('${picker}')" class="${c.exception > 0 ? "exception-count-btn has-exception" : "exception-count-btn"}">
+                <button onclick="showExceptionDetails('${picker}')" class="exception-count-btn">
                   ${c.exception > 0 ? `<span class="table-exception-badge">!</span>` : ``}
-                  ${c.exception}
+                  <span>${c.exception}</span>
                 </button>
               </td>
             </tr>
@@ -319,7 +283,6 @@ function renderAdminSummary() {
 
   if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
 }
-
 function getOngoingPickers() {
   const names = new Set();
   (window.appState.orders || []).forEach(order => {
