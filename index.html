@@ -29,348 +29,8 @@
     </aside>
 
     <main class="main-content" id="mainContent">
-      <section id="welcomeScreen" class="screen active welcome-screen">
-        <div class="mobile-home-shell retail-login-shell">
-          <div class="retail-login-overlay">
-            <div class="mobile-home-card retail-login-card">
-              <div class="mobile-home-hero retail-home-hero">
-                <div class="mobile-home-brand retail-brand-main">Bioworld</div>
-                <div class="mobile-home-subbrand">Warehouse Prototype</div>
-              </div>
 
-              <div class="mobile-role-segment" id="roleChipRow">
-                <button class="mobile-role-pill active role-chip" data-role="picker" onclick="openRoleAccess('picker')">Picker</button>
-                <button class="mobile-role-pill role-chip" data-role="packer" onclick="openRoleAccess('packer')">Packer</button>
-                <button class="mobile-role-pill role-chip" data-role="admin" onclick="openRoleAccess('admin')">Admin</button>
-              </div>
-
-              <div id="pickerSelectionBlock" class="welcome-picker-block">
-                <label for="pickerAccessName">Picker Name</label>
-                <select id="pickerAccessName" onchange="syncPickerSelection()">
-                  <option value="Asmita">Asmita - P001</option>
-                  <option value="An">An - P002</option>
-                  <option value="Vinny">Vinny - P003</option>
-                  <option value="Deepak">Deepak - P004</option>
-                  <option value="Corey">Corey - P005</option>
-                  <option value="Carlos">Carlos - P006</option>
-                </select>
-              </div>
-
-              <label for="rolePasscodeInput">Passcode</label>
-              <input id="rolePasscodeInput" type="password" placeholder="Enter passcode" onkeydown="handleWelcomeKeydown(event)" />
-
-              <button class="primary-btn full-width-btn mobile-home-continue" onclick="continueFromWelcome()">Enter</button>
-              <div id="welcomeMessage" class="message-box mobile-home-message"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="homeDashboard" class="screen">
-        <div class="screen-header">
-          <div>
-            <p class="eyebrow-text">LIVE LIFECYCLE VIEW</p>
-            <h1 class="page-title">Product Lifecycle Dashboard</h1>
-            <p class="page-subtitle">Live movement of products across fulfilment stages</p>
-          </div>
-        </div>
-
-        <div id="lifecycleSummaryCards" class="summary-grid"></div>
-
-        <div class="dashboard-card-wide">
-          <h3>Order Journey</h3>
-          <div id="journeyFlow" class="journey-flow">
-            <div class="journey-step assigned">
-              <div class="journey-title">Assigned</div>
-              <div id="journeyAssigned" class="journey-value">0</div>
-            </div>
-            <div class="journey-arrow">→</div>
-
-            <div class="journey-step picking">
-              <div class="journey-title">Picking</div>
-              <div id="journeyPicking" class="journey-value">0</div>
-            </div>
-            <div class="journey-arrow">→</div>
-
-            <div class="journey-step ready">
-              <div class="journey-title">Ready</div>
-              <div id="journeyReady" class="journey-value">0</div>
-            </div>
-            <div class="journey-arrow">→</div>
-
-            <div class="journey-step packed">
-              <div class="journey-title">Packed</div>
-              <div id="journeyPacked" class="journey-value">0</div>
-            </div>
-            <div class="journey-arrow">→</div>
-
-            <div class="journey-step exception">
-              <div class="journey-title">Exception</div>
-              <div id="journeyException" class="journey-value">0</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chart-grid">
-          <div class="dashboard-card-wide">
-            <h3>Lifecycle Insights</h3>
-            <div class="kpi-panel">
-              <div class="kpi-tile">
-                <div class="kpi-label">Avg Pick Time</div>
-                <div id="kpiAvgPickTime" class="kpi-value">0s</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Avg Pack Time</div>
-                <div id="kpiAvgPackTime" class="kpi-value">0s</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Exception Rate</div>
-                <div id="kpiExceptionRate" class="kpi-value">0%</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Bottleneck Stage</div>
-                <div id="kpiBottleneck" class="kpi-value">-</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="dashboard-card-wide">
-            <h3>Stage Aging</h3>
-            <div class="kpi-panel">
-              <div class="kpi-tile">
-                <div class="kpi-label">Oldest Assigned</div>
-                <div id="agingAssigned" class="kpi-value">0m</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Oldest Picking</div>
-                <div id="agingPicking" class="kpi-value">0m</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Oldest Ready Queue</div>
-                <div id="agingReady" class="kpi-value">0m</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Oldest Exception</div>
-                <div id="agingException" class="kpi-value">0m</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chart-grid">
-          <div class="dashboard-card-wide">
-            <h3>Throughput</h3>
-            <div class="kpi-panel">
-              <div class="kpi-tile">
-                <div class="kpi-label">Picks Completed</div>
-                <div id="throughputPicks" class="kpi-value">0</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Packs Completed</div>
-                <div id="throughputPacks" class="kpi-value">0</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Picks / Hour</div>
-                <div id="throughputPicksPerHour" class="kpi-value">0</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Packs / Hour</div>
-                <div id="throughputPacksPerHour" class="kpi-value">0</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="dashboard-card-wide">
-            <h3>Exception Quality</h3>
-            <div class="kpi-panel">
-              <div class="kpi-tile">
-                <div class="kpi-label">Total Exceptions</div>
-                <div id="exceptionTotal" class="kpi-value">0</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Top Reason</div>
-                <div id="exceptionTopReason" class="kpi-value">-</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Top Picker</div>
-                <div id="exceptionTopPicker" class="kpi-value">-</div>
-              </div>
-              <div class="kpi-tile">
-                <div class="kpi-label">Exception Rate</div>
-                <div id="exceptionRate2" class="kpi-value">0%</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="operationsDashboard" class="screen">
-        <div class="screen-header">
-          <div>
-            <h1 class="page-title">Operations Dashboard</h1>
-            <p class="page-subtitle">Picker, packer and admin performance overview</p>
-          </div>
-        </div>
-
-        <div id="dashboardSummaryCards" class="summary-grid"></div>
-
-        <div class="chart-grid">
-          <div class="dashboard-card-wide">
-            <h3>Picker Assigned vs Completed Picks</h3>
-            <canvas id="pickerAssignedCompletedChart"></canvas>
-          </div>
-
-          <div class="dashboard-card-wide">
-            <h3>Picker Accuracy vs Avg Pick Time</h3>
-            <canvas id="pickerAccuracyTimeChart"></canvas>
-          </div>
-
-          <div class="dashboard-card-wide">
-            <h3>Picker Efficiency Rating</h3>
-            <div id="pickerStarRatings" class="star-rating-list"></div>
-          </div>
-
-          <div class="dashboard-card-wide">
-            <h3>Packer Output</h3>
-            <canvas id="packerOutputChart"></canvas>
-          </div>
-
-          <div class="dashboard-card-wide">
-            <h3>Admin Exception Handling</h3>
-            <canvas id="adminExceptionChart"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <section id="pickerLogin" class="screen picker-page">
-        <div class="screen-header">
-          <div>
-            <h1 class="page-title">Picker Profile</h1>
-            <p id="loggedInPickerName" class="page-subtitle">Welcome, Asmita</p>
-          </div>
-        </div>
-
-        <div class="picker-login-row card-inline" style="display:none;">
-          <select id="pickerName">
-            <option>Asmita</option>
-            <option>An</option>
-            <option>Vinny</option>
-            <option>Deepak</option>
-            <option>Corey</option>
-            <option>Carlos</option>
-          </select>
-          <button onclick="loginPicker()">Login</button>
-        </div>
-
-        <div id="pickerStatusBlocks" class="picker-status-blocks"></div>
-        <div id="pickerSummaryActions" class="picker-summary-actions"></div>
-      </section>
-
-      <section id="pickerTickets" class="screen picker-page">
-        <div class="screen-header">
-          <div>
-            <h1 class="page-title">Assigned Tickets</h1>
-            <p class="page-subtitle">Current lot for the logged-in picker</p>
-          </div>
-          <div class="header-inline">
-            <button id="pickerTicketsBackBtn" class="secondary-btn" onclick="backToPickerSummary()">Back</button>
-          </div>
-        </div>
-        <div id="pickerCompletionBanner" class="picker-completion-banner" style="display:none;"></div>
-        <div id="pickerOrders" class="picker-orders-list"></div>
-      </section>
-
-      <section id="pickingWorkflow" class="screen picking-page">
-        <div class="screen-header">
-          <div class="header-inline">
-            <button class="back-btn" onclick="backToPicker()">←</button>
-            <div>
-              <h1 id="pickSoTitle" class="page-title pick-flow-title"></h1>
-            </div>
-          </div>
-        </div>
-
-        <div class="workflow-card">
-          <div class="aisle-tile">
-            <div class="aisle-label">Go to <strong>Aisle</strong></div>
-            <div id="pickAisle" class="aisle-value">-</div>
-          </div>
-
-          <div class="workflow-details">
-            <div><strong>SO:</strong> <span id="pickSoNumber"></span></div>
-            <div><strong>SKU:</strong> <span id="pickSku"></span></div>
-            <div><strong>Carrier:</strong> <span id="pickCarrier"></span></div>
-          </div>
-
-          <div class="exception-section mobile-section-card">
-            <label>Exception Reason</label>
-            <select id="exceptionReason">
-              <option value="">Select reason</option>
-              <option value="Bin Empty">Bin Empty</option>
-              <option value="Could Not Find Right SKU">Could Not Find Right SKU</option>
-              <option value="Damaged Item">Damaged Item</option>
-            </select>
-            <button onclick="saveException()">Save Exception</button>
-          </div>
-
-          <div class="scan-section mobile-section-card">
-            <label>SKU</label>
-            <input id="manualSkuInput" placeholder="Scan SKU" />
-          </div>
-
-          <div id="skuValidationMessage" class="message-box"></div>
-
-          <div id="toteSection" style="display:none; margin-top:22px;">
-            <div class="shelf-row mobile-section-card">
-              <strong>Correct Shelf:</strong> <span id="pickShelf"></span>
-            </div>
-
-            <div class="scan-section mobile-section-card">
-              <label>Tote LP</label>
-              <input id="manualToteInput" placeholder="Scan Tote LP" />
-            </div>
-
-            <div id="toteValidationMessage" class="message-box"></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="packerDashboard" class="screen packer-page">
-        <div class="screen-header">
-          <div>
-            <h1 class="page-title">Packer Profile</h1>
-          </div>
-          <button class="secondary-btn" onclick="logoutUser()">Logout</button>
-        </div>
-
-        <div class="workflow-card">
-          <div class="packer-input-row mobile-section-card">
-            <label for="packerToteInput">Tote LP</label>
-            <input id="packerToteInput" placeholder="Scan Tote LP" />
-          </div>
-
-          <div id="packerToteMessage" class="message-box"></div>
-
-          <div class="packer-input-row mobile-section-card">
-            <label for="packerSkuInput">SKU</label>
-            <input id="packerSkuInput" placeholder="Scan SKU QR" />
-          </div>
-
-          <div id="packerSkuMessage" class="message-box"></div>
-
-          <div class="scan-btn-row">
-            <button onclick="validatePackerSession()">Validate Tote</button>
-            <button onclick="togglePackerExceptions()">Show Exceptions</button>
-          </div>
-        </div>
-
-        <div id="packerReadyList" class="packer-section"></div>
-
-        <div id="packerExceptionSection" class="packer-section" style="display:none;">
-          <div id="packerExceptionList"></div>
-        </div>
-      </section>
-
+      <!-- ADMIN DASHBOARD -->
       <section id="adminDashboard" class="screen">
         <div class="screen-header">
           <div>
@@ -397,7 +57,11 @@
 
           <div class="scan-btn-row">
             <button onclick="importOrders()">Import Orders</button>
-            <button onclick="resetTrialPicks()">Reset Trial</button>
+
+            <!-- ✅ NEW EXCEPTION BADGE BUTTON -->
+            <button onclick="openExceptionHandling()" class="admin-exception-icon-btn" title="Exception Handling">
+              <span id="adminExceptionBadge" class="admin-exception-badge" style="display:none;">!</span>
+            </button>
           </div>
         </div>
 
@@ -406,44 +70,41 @@
         <div id="adminSickToteList"></div>
       </section>
 
+      <!-- EXCEPTION SCREEN -->
       <section id="adminExceptionScreen" class="screen">
         <div class="screen-header">
           <div>
             <h1 class="page-title">Exception Handling</h1>
-            <p class="page-subtitle">Review picking and sick tote exceptions</p>
+            <p class="page-subtitle">Review picking and packing exceptions</p>
           </div>
           <div class="header-inline">
-            <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin</button>
+            <button class="secondary-btn" onclick="backToAdminDashboard()">Back</button>
             <button class="secondary-btn" onclick="logoutUser()">Logout</button>
           </div>
         </div>
 
         <div class="admin-controls">
           <div class="exception-toolbar">
-            <button class="icon-btn" title="Download Final Report" onclick="downloadFinalReportExcel()">⤓</button>
+            <button class="icon-btn" onclick="downloadFinalReportExcel()">⤓</button>
           </div>
+
           <div class="exception-category-row">
-            <button id="exceptionTabPicking" class="secondary-btn active-toggle" onclick="setExceptionCategory('pick')">Picking Exceptions</button>
-            <button id="exceptionTabPacking" class="secondary-btn" onclick="setExceptionCategory('pack')">Packing Exceptions</button>
+            <button id="exceptionTabPicking" class="secondary-btn active-toggle" onclick="setExceptionCategory('pick')">Picking</button>
+            <button id="exceptionTabPacking" class="secondary-btn" onclick="setExceptionCategory('pack')">Packing</button>
           </div>
         </div>
 
-        <div id="adminNoExceptionMessage" class="message-box message-success" style="display:none; margin-bottom:16px;">No more exceptions</div>
+        <div id="adminNoExceptionMessage" class="message-box message-success" style="display:none;">No more exceptions</div>
         <div id="adminExceptionList"></div>
       </section>
+
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
-  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-
   <script src="js/state.js"></script>
-  <script src="js/utils.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/picker.js"></script>
   <script src="js/packer.js"></script>
-  <script src="js/scanner.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
