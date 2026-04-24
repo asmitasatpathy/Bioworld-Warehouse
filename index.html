@@ -1,37 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bioworld Warehouse Prototype</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar collapsed" id="sidebar">
-      <div class="sidebar-top">
-        <button class="hamburger" onclick="toggleSidebar()">☰</button>
-        <div class="brand-wrap">
-          <div class="brand-title">Bioworld Warehouse</div>
-          <div class="brand-subtitle">Prototype Control</div>
-        </div>
-      </div>
+<!-- ONLY ADMIN SECTION CHANGED — REST OF YOUR FILE SAME -->
 
-      <nav class="sidebar-nav">
-        <button class="nav-item" onclick="showScreen('welcomeScreen')">Home</button>
-        <button class="nav-item active" onclick="showScreen('homeDashboard')">Lifecycle</button>
-        <button class="nav-item" onclick="showScreen('operationsDashboard')">Operations</button>
-        <button class="nav-item" onclick="showScreen('pickerLogin')">Picker</button>
-        <button class="nav-item" onclick="showScreen('packerDashboard')">Packer</button>
-        <button class="nav-item" onclick="showScreen('adminDashboard')">Admin</button>
-        <button class="nav-item" onclick="openExceptionHandling()">Exception Handling</button>
-      </nav>
-    </aside>
-
-    <main class="main-content" id="mainContent">
-
-      <!-- ADMIN DASHBOARD -->
-      <section id="adminDashboard" class="screen">
+<section id="adminDashboard" class="screen">
   <div class="screen-header">
     <div>
       <h1 class="page-title">Admin Profile</h1>
@@ -57,8 +26,9 @@
 
     <div class="scan-btn-row">
       <button onclick="importOrders()">Import Orders</button>
+      <button onclick="resetTrialPicks()">Reset Trial</button>
 
-      <!-- 🔴 Exception Icon -->
+      <!-- ✅ NEW ICON -->
       <button onclick="openExceptionHandling()" class="admin-exception-icon-btn">
         <span id="adminExceptionBadge" class="admin-exception-badge" style="display:none;">!</span>
       </button>
@@ -69,42 +39,3 @@
   <div class="table-scroll" id="adminExceptionDetails"></div>
   <div id="adminSickToteList"></div>
 </section>
-
-      <!-- EXCEPTION SCREEN -->
-      <section id="adminExceptionScreen" class="screen">
-        <div class="screen-header">
-          <div>
-            <h1 class="page-title">Exception Handling</h1>
-            <p class="page-subtitle">Review picking and packing exceptions</p>
-          </div>
-          <div class="header-inline">
-            <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin</button>
-            <button class="secondary-btn" onclick="logoutUser()">Logout</button>
-          </div>
-        </div>
-
-        <div class="admin-controls">
-          <div class="exception-toolbar">
-            <button class="icon-btn" onclick="downloadFinalReportExcel()">⤓</button>
-          </div>
-
-          <div class="exception-category-row">
-            <button id="exceptionTabPicking" class="secondary-btn active-toggle" onclick="setExceptionCategory('pick')">Picking Exceptions</button>
-            <button id="exceptionTabPacking" class="secondary-btn" onclick="setExceptionCategory('pack')">Packing Exceptions</button>
-          </div>
-        </div>
-
-        <div id="adminNoExceptionMessage" class="message-box message-success" style="display:none;">No more exceptions</div>
-        <div id="adminExceptionList"></div>
-      </section>
-
-    </main>
-  </div>
-
-  <script src="js/state.js"></script>
-  <script src="js/admin.js"></script>
-  <script src="js/picker.js"></script>
-  <script src="js/packer.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
