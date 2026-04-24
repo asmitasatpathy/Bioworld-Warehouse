@@ -110,7 +110,7 @@
       });
 
     const readyAges = orders
-      .filter(o => o.status === "Ready for Packing" && !((window.appState.sickTotes||{})[(o.toteLp||"").toUpperCase()]))
+      .filter(o => o.status === "Ready for Packing" && !((window.appState.sickTotes || {})[(o.toteLp || "").toUpperCase()]))
       .map(o => {
         const end = getMs(o.tripEndTime);
         return end ? now - end : 0;
@@ -133,11 +133,23 @@
 
   function getThroughputMetrics() {
     const orders = getOrders();
-    const picksCompleted = orders.filter(o => o.status === "Ready for Packing" || o.status === "Packed").length;
+
+    const totalOrders = orders.length;
+    const picksCompleted = orders.filter(o =>
+      o.status === "Ready for Packing" || o.status === "Packed"
+    ).length;
+
     const packsCompleted = orders.filter(o => o.status === "Packed").length;
 
-    const pickTimes = orders.filter(o => o.tripEndTime).map(o => getMs(o.tripEndTime)).filter(Boolean);
-    const packTimes = orders.filter(o => o.packTime).map(o => getMs(o.packTime)).filter(Boolean);
+    const pickTimes = orders
+      .filter(o => o.tripEndTime)
+      .map(o => getMs(o.tripEndTime))
+      .filter(Boolean);
+
+    const packTimes = orders
+      .filter(o => o.packTime)
+      .map(o => getMs(o.packTime))
+      .filter(Boolean);
 
     let picksPerHour = 0;
     if (pickTimes.length >= 2) {
@@ -158,6 +170,8 @@
     return {
       picksCompleted,
       packsCompleted,
+      predictedPicks: totalOrders,
+      predictedPacks: totalOrders,
       picksPerHour: Number(picksPerHour.toFixed(1)),
       packsPerHour: Number(packsPerHour.toFixed(1))
     };
@@ -165,14 +179,62 @@
 
   function getExceptionQuality() {
     const orders = getOrders();
-    const exceptions = orders.filter(o => o.status === "Exception");
+    const resolved = (window.appState && window.appState.resolvedExceptions) || [];
+
+    const currentPickExceptions = orders.filter(o => o.status === "Exception");
+
+    const historicalPickExceptions = orders.filter(o =>
+      o.adminDecision ||
+      o.status === "Exception Reviewed" ||
+      o.status === "Inventory Hold" ||
+      o.status === "Damage Hold"
+    );
+
+    const activePackingExceptions = Object.entries((window.appState && window.appState.sickTotes) || {}).flatMap(([toteLp, data]) =>
+      (data.exceptions || []).map(ex => ({
+        ...ex,
+        toteLp
+      }))
+    );
+
+    const resolvedPackingExceptions = resolved.filter(r => r.exceptionType === "Packing Exception");
+
+    const allExceptionEvents = [
+      ...currentPickExceptions.map(o => ({
+        reason: o.exceptionReason || "Unspecified",
+        picker: o.assignedPicker || "Unassigned"
+      })),
+      ...historicalPickExceptions.map(o => ({
+        reason: o.exceptionReason || o.adminDecision || "Reviewed Exception",
+        picker: o.assignedPicker || "Unassigned"
+      })),
+      ...activePackingExceptions.map(ex => ({
+        reason: ex.reason || "Packing Exception",
+        picker: ex.picker || "Unassigned"
+      })),
+      ...resolvedPackingExceptions.map(ex => ({
+        reason: ex.resolutionType || ex.decision || "Packing Exception",
+        picker: "Admin"
+      }))
+    ];
+
+    const uniqueEvents = [];
+    const seen = new Set();
+
+    allExceptionEvents.forEach(ex => {
+      const key = `${ex.reason}|${ex.picker}`;
+      if (!seen.has(key) || ex.reason === "Missing SKU" || ex.reason === "Additional SKU") {
+        uniqueEvents.push(ex);
+        seen.add(key);
+      }
+    });
 
     const reasons = {};
     const pickers = {};
 
-    exceptions.forEach(o => {
-      const reason = o.exceptionReason || "Unspecified";
-      const picker = o.assignedPicker || "Unassigned";
+    uniqueEvents.forEach(ex => {
+      const reason = ex.reason || "Unspecified";
+      const picker = ex.picker || "Unassigned";
       reasons[reason] = (reasons[reason] || 0) + 1;
       pickers[picker] = (pickers[picker] || 0) + 1;
     });
@@ -181,10 +243,11 @@
     const topPicker = Object.entries(pickers).sort((a, b) => b[1] - a[1])[0];
 
     const total = orders.length;
-    const exceptionRate = total ? ((exceptions.length / total) * 100).toFixed(1) : "0.0";
+    const totalExceptionsOccurred = uniqueEvents.length;
+    const exceptionRate = total ? ((totalExceptionsOccurred / total) * 100).toFixed(1) : "0.0";
 
     return {
-      totalExceptions: exceptions.length,
+      totalExceptions: totalExceptionsOccurred,
       topReason: topReason ? `${topReason[0]} (${topReason[1]})` : "-",
       topPicker: topPicker ? `${topPicker[0]} (${topPicker[1]})` : "-",
       exceptionRate: `${exceptionRate}%`
@@ -193,7 +256,7 @@
 
   function getReadyQueue() {
     return getOrders()
-      .filter(o => o.status === "Ready for Packing" && !((window.appState.sickTotes||{})[(o.toteLp||"").toUpperCase()]))
+      .filter(o => o.status === "Ready for Packing" && !((window.appState.sickTotes || {})[(o.toteLp || "").toUpperCase()]))
       .map(o => ({
         so: o.so || "-",
         toteLp: o.toteLp || "-",
@@ -239,12 +302,27 @@
 
   function getAdminExceptionMetrics() {
     const orders = getOrders();
-    const exceptions = orders.filter(o => o.status === "Exception").length;
-    const nonExceptions = orders.length - exceptions;
+    const resolved = (window.appState && window.appState.resolvedExceptions) || [];
+    const activePacking = Object.entries((window.appState && window.appState.sickTotes) || {}).reduce((sum, [, data]) => {
+      return sum + ((data.exceptions || []).length);
+    }, 0);
+
+    const historicalPickExceptions = orders.filter(o =>
+      o.status === "Exception" ||
+      o.status === "Exception Reviewed" ||
+      o.status === "Inventory Hold" ||
+      o.status === "Damage Hold" ||
+      o.adminDecision
+    ).length;
+
+    const resolvedPackingExceptions = resolved.filter(r => r.exceptionType === "Packing Exception").length;
+
+    const totalExceptionsOccurred = historicalPickExceptions + activePacking + resolvedPackingExceptions;
+    const nonExceptions = Math.max(0, orders.length - totalExceptionsOccurred);
 
     return {
       labels: ["Exceptions", "Non-Exceptions"],
-      values: [exceptions, nonExceptions]
+      values: [totalExceptionsOccurred, nonExceptions]
     };
   }
 
@@ -282,16 +360,16 @@
       navButtons.forEach((btn, index) => {
         btn.style.display = index === 4 ? "block" : "none";
       });
-    } else if (role === 'admin') {
+    } else if (role === "admin") {
       navButtons.forEach((btn, index) => {
-        btn.style.display = [0,1,2,3,4,5,6].includes(index) ? 'block' : 'none';
+        btn.style.display = [0, 1, 2, 3, 4, 5, 6].includes(index) ? "block" : "none";
       });
     }
   }
 
   function showScreen(screenId) {
     const role = String((window.appState && window.appState.currentRole) || "").toLowerCase();
-    if (role === "picker" && !["pickerLogin","pickerTickets","pickingWorkflow","welcomeScreen"].includes(screenId)) {
+    if (role === "picker" && !["pickerLogin", "pickerTickets", "pickingWorkflow", "welcomeScreen"].includes(screenId)) {
       screenId = "pickerLogin";
     }
     if (role === "packer" && screenId !== "packerDashboard" && screenId !== "welcomeScreen") {
@@ -306,7 +384,8 @@
 
     updateAccessByRole();
     setActiveNav(screenId);
-    const sidebar = document.getElementById("sidebar"); if (sidebar && window.innerWidth <= 900) sidebar.classList.remove("open");
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar && window.innerWidth <= 900) sidebar.classList.remove("open");
 
     if (screenId === "homeDashboard" || screenId === "operationsDashboard" || screenId === "packerDashboard") {
       setTimeout(renderOperationsDashboard, 50);
@@ -326,7 +405,7 @@
       }, 80);
     }
 
-    if (screenId === 'adminExceptionScreen' && typeof renderExceptionHandling === 'function') {
+    if (screenId === "adminExceptionScreen" && typeof renderExceptionHandling === "function") {
       window.setTimeout(renderExceptionHandling, 10);
     }
   }
@@ -418,9 +497,9 @@
       window.appState.currentRole = null;
       window.appState.currentUser = null;
       window.appState.currentOrder = null;
-      if (typeof saveState === 'function') saveState();
+      if (typeof saveState === "function") saveState();
     }
-    showScreen('welcomeScreen');
+    showScreen("welcomeScreen");
   }
 
   function toggleSidebar() {
@@ -479,8 +558,14 @@
     const picksHour = document.getElementById("throughputPicksPerHour");
     const packsHour = document.getElementById("throughputPacksPerHour");
 
-    if (picks) picks.textContent = t.picksCompleted;
-    if (packs) packs.textContent = t.packsCompleted;
+    if (picks) {
+      picks.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.picksCompleted}</span> <span style="color:#61758d;">| ${t.predictedPicks}</span>`;
+    }
+
+    if (packs) {
+      packs.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.packsCompleted}</span> <span style="color:#61758d;">| ${t.predictedPacks}</span>`;
+    }
+
     if (picksHour) picksHour.textContent = t.picksPerHour;
     if (packsHour) packsHour.textContent = t.packsPerHour;
   }
@@ -529,22 +614,26 @@
         </tbody>
       </table>
     `;
+
+    targets.forEach(el => {
+      el.innerHTML = html;
+    });
   }
 
   function renderOperationsSummaryCards() {
-  const m = getLifecycleMetrics();
-  const container = document.getElementById("dashboardSummaryCards");
-  if (!container) return;
+    const m = getLifecycleMetrics();
+    const container = document.getElementById("dashboardSummaryCards");
+    if (!container) return;
 
-  container.innerHTML = `
-    <div class="summary-card"><div class="summary-label">Total Orders</div><div class="summary-value">${m.total}</div></div>
-    <div class="summary-card"><div class="summary-label">Assigned</div><div class="summary-value">${m.assigned}</div></div>
-    <div class="summary-card"><div class="summary-label">In Progress</div><div class="summary-value">${m.picking}</div></div>
-    <div class="summary-card"><div class="summary-label">Ready for Packing</div><div class="summary-value">${m.ready}</div></div>
-    <div class="summary-card"><div class="summary-label">Packed</div><div class="summary-value">${m.packed}</div></div>
-    <div class="summary-card"><div class="summary-label">Exceptions</div><div class="summary-value">${m.exception}</div></div>
-  `;
-}
+    container.innerHTML = `
+      <div class="summary-card"><div class="summary-label">Total Orders</div><div class="summary-value">${m.total}</div></div>
+      <div class="summary-card"><div class="summary-label">Assigned</div><div class="summary-value">${m.assigned}</div></div>
+      <div class="summary-card"><div class="summary-label">In Progress</div><div class="summary-value">${m.picking}</div></div>
+      <div class="summary-card"><div class="summary-label">Ready for Packing</div><div class="summary-value">${m.ready}</div></div>
+      <div class="summary-card"><div class="summary-label">Packed</div><div class="summary-value">${m.packed}</div></div>
+      <div class="summary-card"><div class="summary-label">Exceptions</div><div class="summary-value">${m.exception}</div></div>
+    `;
+  }
 
   function renderPickerAssignedVsCompletedChart() {
     const canvas = document.getElementById("pickerAssignedCompletedChart");
@@ -623,14 +712,19 @@
     if (!container) return;
 
     const pickerMetrics = getPickerMetrics();
+
     container.innerHTML = pickerMetrics.map(picker => {
       const completionRatio = picker.assigned ? picker.completed / picker.assigned : 0;
 
-      let score = 3;
-      if (completionRatio >= 0.9) score += 1;
+      let score = 0;
+
+      if (picker.assigned > 0) score += 1;
+      if (completionRatio >= 0.5) score += 1;
+      if (completionRatio >= 0.8) score += 1;
+      if (picker.avgPickTime > 0 && picker.avgPickTime <= 120) score += 1;
       if (picker.avgPickTime > 0 && picker.avgPickTime <= 60) score += 1;
-      if (picker.avgPickTime > 120) score -= 1;
-      score = Math.max(1, Math.min(5, score));
+
+      score = Math.max(0, Math.min(5, score));
 
       return `
         <div class="rating-row">
@@ -646,28 +740,9 @@
 
   function renderPackerOutputChart() {
     const canvas = document.getElementById("packerOutputChart");
-    if (!canvas || typeof Chart === "undefined") return;
-
-    const packerData = getPackerMetrics();
-    if (packerOutputChart) packerOutputChart.destroy();
-
-    packerOutputChart = new Chart(canvas, {
-      type: "bar",
-      data: {
-        labels: packerData.labels,
-        datasets: [{
-          label: "Packed Orders",
-          data: packerData.values,
-          borderRadius: 8
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-      }
-    });
+    if (canvas && canvas.parentElement) {
+      canvas.parentElement.style.display = "none";
+    }
   }
 
   function renderAdminExceptionChart() {
@@ -744,6 +819,7 @@
     setTimeout(renderOperationsDashboard, 100);
   });
 })();
+
 (function () {
   function normalizeScannerValue(el) {
     if (!el) return "";
