@@ -212,10 +212,10 @@
         reason: ex.reason || "Packing Exception",
         picker: ex.picker || "Unassigned"
       })),
-      ...resolvedPackingExceptions.map(ex => ({
-        reason: ex.resolutionType || ex.decision || "Packing Exception",
-        picker: "Admin"
-      }))
+     ...resolvedPackingExceptions.map(ex => ({
+  reason: ex.resolutionType || ex.decision || "Packing Exception",
+  picker: ex.picker || ex.assignedPicker || ex.originalPicker || "Unassigned"
+}))
     ];
 
     const uniqueEvents = [];
