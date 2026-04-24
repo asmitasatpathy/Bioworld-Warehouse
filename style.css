@@ -1539,3 +1539,32 @@ label {
   font-weight: 800;
   line-height: 1;
 }
+.exception-count-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.exception-count-btn.has-exception {
+  background: #fff;
+  color: #d93025;
+  border: 2px solid #d93025;
+}
+
+.table-exception-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #d93025;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
