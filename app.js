@@ -135,6 +135,7 @@
     const orders = getOrders();
 
     const totalOrders = orders.length;
+
     const picksCompleted = orders.filter(o =>
       o.status === "Ready for Packing" || o.status === "Packed"
     ).length;
@@ -154,7 +155,7 @@
     let picksPerHour = 0;
     if (pickTimes.length >= 2) {
       const spanHours = (Math.max(...pickTimes) - Math.min(...pickTimes)) / 3600000;
-      picksPerHour = spanHours > 0 ? (picksCompleted / spanHours) : picksCompleted;
+      picksPerHour = spanHours > 0 ? picksCompleted / spanHours : picksCompleted;
     } else if (pickTimes.length === 1) {
       picksPerHour = picksCompleted;
     }
@@ -162,7 +163,7 @@
     let packsPerHour = 0;
     if (packTimes.length >= 2) {
       const spanHours = (Math.max(...packTimes) - Math.min(...packTimes)) / 3600000;
-      packsPerHour = spanHours > 0 ? (packsCompleted / spanHours) : packsCompleted;
+      packsPerHour = spanHours > 0 ? packsCompleted / spanHours : packsCompleted;
     } else if (packTimes.length === 1) {
       packsPerHour = packsCompleted;
     }
@@ -170,10 +171,10 @@
     return {
       picksCompleted,
       packsCompleted,
-      predictedPicks: totalOrders,
-      predictedPacks: totalOrders,
       picksPerHour: Number(picksPerHour.toFixed(1)),
-      packsPerHour: Number(packsPerHour.toFixed(1))
+      packsPerHour: Number(packsPerHour.toFixed(1)),
+      predictedPickTarget: totalOrders,
+      predictedPackTarget: totalOrders
     };
   }
 
@@ -558,16 +559,22 @@
     const picksHour = document.getElementById("throughputPicksPerHour");
     const packsHour = document.getElementById("throughputPacksPerHour");
 
-    if (picks) {
-      picks.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.picksCompleted}</span> <span style="color:#61758d;">| ${t.predictedPicks}</span>`;
+    if (picks) picks.textContent = t.picksCompleted;
+    if (packs) packs.textContent = t.packsCompleted;
+
+    if (picksHour) {
+      picksHour.innerHTML = `
+        <span style="color:#1e8e3e;font-weight:800;">${t.picksPerHour}</span>
+        <span style="color:#61758d;"> | ${t.predictedPickTarget}</span>
+      `;
     }
 
-    if (packs) {
-      packs.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.packsCompleted}</span> <span style="color:#61758d;">| ${t.predictedPacks}</span>`;
+    if (packsHour) {
+      packsHour.innerHTML = `
+        <span style="color:#1e8e3e;font-weight:800;">${t.packsPerHour}</span>
+        <span style="color:#61758d;"> | ${t.predictedPackTarget}</span>
+      `;
     }
-
-    if (picksHour) picksHour.textContent = t.picksPerHour;
-    if (packsHour) packsHour.textContent = t.packsPerHour;
   }
 
   function renderExceptionQuality() {
