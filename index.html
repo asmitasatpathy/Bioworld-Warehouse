@@ -58,8 +58,8 @@
           <div class="scan-btn-row">
             <button onclick="importOrders()">Import Orders</button>
 
-            <!-- ✅ NEW EXCEPTION BADGE BUTTON -->
-            <button onclick="openExceptionHandling()" class="admin-exception-icon-btn" title="Exception Handling">
+            <!-- ✅ RED EXCEPTION ICON -->
+            <button onclick="openExceptionHandling()" class="admin-exception-icon-btn">
               <span id="adminExceptionBadge" class="admin-exception-badge" style="display:none;">!</span>
             </button>
           </div>
@@ -78,7 +78,7 @@
             <p class="page-subtitle">Review picking and packing exceptions</p>
           </div>
           <div class="header-inline">
-            <button class="secondary-btn" onclick="backToAdminDashboard()">Back</button>
+            <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin</button>
             <button class="secondary-btn" onclick="logoutUser()">Logout</button>
           </div>
         </div>
@@ -89,8 +89,8 @@
           </div>
 
           <div class="exception-category-row">
-            <button id="exceptionTabPicking" class="secondary-btn active-toggle" onclick="setExceptionCategory('pick')">Picking</button>
-            <button id="exceptionTabPacking" class="secondary-btn" onclick="setExceptionCategory('pack')">Packing</button>
+            <button id="exceptionTabPicking" class="secondary-btn active-toggle" onclick="setExceptionCategory('pick')">Picking Exceptions</button>
+            <button id="exceptionTabPacking" class="secondary-btn" onclick="setExceptionCategory('pack')">Packing Exceptions</button>
           </div>
         </div>
 
