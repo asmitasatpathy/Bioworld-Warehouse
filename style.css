@@ -1594,43 +1594,32 @@ label {
   font-size: 14px;
   font-weight: 800;
 }
-<!-- ONLY ADMIN SECTION CHANGED — REST SAME -->
+.admin-exception-icon-btn {
+  position: relative;
+  width: 48px !important;
+  height: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #d93025;
+  color: #d93025;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
-<section id="adminDashboard" class="screen">
-  <div class="screen-header">
-    <div>
-      <h1 class="page-title">Admin Profile</h1>
-      <p class="page-subtitle">Import orders and manage warehouse activity</p>
-    </div>
-    <button class="secondary-btn" onclick="logoutUser()">Logout</button>
-  </div>
-
-  <div class="admin-controls">
-    <input type="file" id="orderFile" />
-
-    <div>
-      <label>Select number of pickers</label>
-      <select id="pickerCount">
-        <option>1</option>
-        <option>2</option>
-        <option>3</option>
-        <option>4</option>
-        <option>5</option>
-        <option>6</option>
-      </select>
-    </div>
-
-    <div class="scan-btn-row">
-      <button onclick="importOrders()">Import Orders</button>
-
-      <!-- ✅ NEW EXCEPTION ICON -->
-      <button onclick="openExceptionHandling()" class="admin-exception-icon-btn">
-        <span id="adminExceptionBadge" class="admin-exception-badge" style="display:none;">!</span>
-      </button>
-    </div>
-  </div>
-
-  <div id="adminSummary"></div>
-  <div class="table-scroll" id="adminExceptionDetails"></div>
-  <div id="adminSickToteList"></div>
-</section>
+.admin-exception-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #d93025;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
