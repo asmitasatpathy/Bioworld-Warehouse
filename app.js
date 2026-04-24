@@ -135,6 +135,7 @@
     const orders = getOrders();
 
     const totalOrders = orders.length;
+
     const picksCompleted = orders.filter(o =>
       o.status === "Ready for Packing" || o.status === "Packed"
     ).length;
@@ -167,13 +168,18 @@
       packsPerHour = packsCompleted;
     }
 
+    const predictedPicksPerHour = totalOrders ? totalOrders : 0;
+    const predictedPacksPerHour = totalOrders ? totalOrders : 0;
+
     return {
       picksCompleted,
       packsCompleted,
       predictedPicks: totalOrders,
       predictedPacks: totalOrders,
       picksPerHour: Number(picksPerHour.toFixed(1)),
-      packsPerHour: Number(packsPerHour.toFixed(1))
+      packsPerHour: Number(packsPerHour.toFixed(1)),
+      predictedPicksPerHour,
+      predictedPacksPerHour
     };
   }
 
@@ -212,10 +218,10 @@
         reason: ex.reason || "Packing Exception",
         picker: ex.picker || "Unassigned"
       })),
-     ...resolvedPackingExceptions.map(ex => ({
-  reason: ex.resolutionType || ex.decision || "Packing Exception",
-  picker: ex.picker || ex.assignedPicker || ex.originalPicker || "Unassigned"
-}))
+      ...resolvedPackingExceptions.map(ex => ({
+        reason: ex.resolutionType || ex.decision || "Packing Exception",
+        picker: ex.picker || ex.assignedPicker || ex.originalPicker || "Unassigned"
+      }))
     ];
 
     const uniqueEvents = [];
@@ -235,7 +241,9 @@
     uniqueEvents.forEach(ex => {
       const reason = ex.reason || "Unspecified";
       const picker = ex.picker || "Unassigned";
+
       reasons[reason] = (reasons[reason] || 0) + 1;
+
       if (picker === "Admin") return;
       pickers[picker] = (pickers[picker] || 0) + 1;
     });
@@ -291,14 +299,6 @@
         avgPickTime: Number(avgPickTime.toFixed(1))
       };
     });
-  }
-
-  function getPackerMetrics() {
-    const packedOrders = getOrders().filter(o => o.status === "Packed").length;
-    return {
-      labels: ["Packed Orders"],
-      values: [packedOrders]
-    };
   }
 
   function getAdminExceptionMetrics() {
@@ -559,16 +559,16 @@
     const picksHour = document.getElementById("throughputPicksPerHour");
     const packsHour = document.getElementById("throughputPacksPerHour");
 
-    if (picks) {
-      picks.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.picksCompleted}</span> <span style="color:#61758d;">| ${t.predictedPicks}</span>`;
+    if (picks) picks.textContent = t.picksCompleted;
+    if (packs) packs.textContent = t.packsCompleted;
+
+    if (picksHour) {
+      picksHour.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.picksPerHour}</span> <span style="color:#61758d;">| ${t.predictedPicksPerHour}</span>`;
     }
 
-    if (packs) {
-      packs.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.packsCompleted}</span> <span style="color:#61758d;">| ${t.predictedPacks}</span>`;
+    if (packsHour) {
+      packsHour.innerHTML = `<span style="color:#1e8e3e;font-weight:800;">${t.packsPerHour}</span> <span style="color:#61758d;">| ${t.predictedPacksPerHour}</span>`;
     }
-
-    if (picksHour) picksHour.textContent = t.picksPerHour;
-    if (packsHour) packsHour.textContent = t.packsPerHour;
   }
 
   function renderExceptionQuality() {
@@ -802,6 +802,7 @@
     if (typeof renderPackerDashboard === "function") renderPackerDashboard();
     if (typeof renderAdminSummary === "function") renderAdminSummary();
     if (typeof renderSickToteList === "function") renderSickToteList();
+    if (typeof updateAdminExceptionBadge === "function") updateAdminExceptionBadge();
   }
 
   window.toggleSidebar = toggleSidebar;
