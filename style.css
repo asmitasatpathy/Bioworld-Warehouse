@@ -1,9 +1,10 @@
-/* KEEP ALL YOUR EXISTING CSS ABOVE THIS LINE */
+/* ===== KEEP YOUR EXISTING CSS EXACTLY AS IS ABOVE ===== */
+/* (Your full original CSS content goes here — DO NOT REMOVE ANYTHING) */
 
-/* ========================= */
-/* ✅ ADMIN EXCEPTION ICON   */
-/* ========================= */
 
+/* ============================= */
+/* ✅ FIX 1: ADMIN EXCEPTION ICON */
+/* ============================= */
 .admin-exception-icon-btn {
   position: relative;
   width: 48px !important;
@@ -33,10 +34,10 @@
   line-height: 1;
 }
 
-/* ========================= */
-/* ✅ MOBILE TABLE FIX       */
-/* ========================= */
 
+/* ============================= */
+/* ✅ FIX 2: MOBILE TABLE FIX */
+/* ============================= */
 .mobile-admin-summary-table {
   width: 100%;
   max-width: 100%;
@@ -57,6 +58,14 @@
   width: 24%;
 }
 
-/* ========================= */
-/* NOTHING ELSE CHANGED      */
-/* ========================= */
+@media (max-width: 640px) {
+  .mobile-admin-summary-table {
+    font-size: 12px;
+  }
+
+  .mobile-admin-summary-table button {
+    padding: 6px 8px;
+    font-size: 12px;
+    min-height: 32px;
+  }
+}
