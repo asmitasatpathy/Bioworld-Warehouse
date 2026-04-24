@@ -78,7 +78,9 @@ function importOrders() {
     window.appState.resolvedExceptions = [];
     window.currentExceptionCategory = null;
     window.currentPackingModePage = null;
+
     saveState();
+    updateAdminExceptionBadge();
 
     renderAdminSummary();
     renderSickToteList();
@@ -124,7 +126,9 @@ function resetTrialPicks() {
   window.appState.resolvedExceptions = [];
   window.currentExceptionCategory = null;
   window.currentPackingModePage = null;
+
   saveState();
+  updateAdminExceptionBadge();
 
   renderAdminSummary();
   renderSickToteList();
@@ -137,32 +141,6 @@ function resetTrialPicks() {
   if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
 
   alert("Trial picks have been reset.");
-}
-
-function completeAllPicksTrial() {
-  if (!window.appState.orders || !window.appState.orders.length) {
-    alert("No orders available.");
-    return;
-  }
-
-  window.appState.orders.forEach(order => {
-    order.status = "Ready for Packing";
-    if (!order.tripStartTime) {
-      order.tripStartTime = new Date().toISOString();
-    }
-    order.tripEndTime = new Date().toISOString();
-  });
-
-  saveState();
-
-  renderAdminSummary();
-  renderSickToteList();
-
-  if (typeof renderPickerDashboard === "function") renderPickerDashboard();
-  if (typeof renderPackerDashboard === "function") renderPackerDashboard();
-  if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
-
-  alert("All picks marked as completed for trial.");
 }
 
 function showExceptionDetails(pickerName) {
@@ -180,30 +158,32 @@ function showExceptionDetails(pickerName) {
 
   detailsEl.innerHTML = `
     <h3 style="margin-top:30px;">Exception Details - ${pickerName}</h3>
-    <table border="1" cellpadding="8" cellspacing="0" style="margin:20px auto; background:white;">
-      <thead>
-        <tr>
-          <th>SO No</th>
-          <th>SKU</th>
-          <th>Bin No</th>
-          <th>Aisle</th>
-          <th>Date & Time</th>
-          <th>Reason</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${exceptions.map(order => `
+    <div class="table-scroll-wrap">
+      <table border="1" cellpadding="8" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
+        <thead>
           <tr>
-            <td>${order.so}</td>
-            <td>${order.sku}</td>
-            <td>${order.binCode || ""}</td>
-            <td>${order.aisle || ""}</td>
-            <td>${order.tripEndTime ? new Date(order.tripEndTime).toLocaleString() : "-"}</td>
-            <td>${order.exceptionReason || "-"}</td>
+            <th>SO No</th>
+            <th>SKU</th>
+            <th>Bin No</th>
+            <th>Aisle</th>
+            <th>Date & Time</th>
+            <th>Reason</th>
           </tr>
-        `).join("")}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          ${exceptions.map(order => `
+            <tr>
+              <td>${order.so}</td>
+              <td>${order.sku}</td>
+              <td>${order.binCode || ""}</td>
+              <td>${order.aisle || ""}</td>
+              <td>${order.tripEndTime ? new Date(order.tripEndTime).toLocaleString() : "-"}</td>
+              <td>${order.exceptionReason || "-"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -233,35 +213,6 @@ function downloadExceptionsExcel() {
   XLSX.writeFile(workbook, "Exceptions_Report.xlsx");
 }
 
-function clearSickTote() {
-  const input = document.getElementById("adminSickToteInput");
-  if (!input) return;
-
-  const tote = String(input.value || "").trim().toUpperCase();
-  if (!tote) {
-    alert("Enter Tote LP first.");
-    return;
-  }
-
-  delete window.appState.sickTotes[tote];
-  if (!window.appState.toteRegistry) window.appState.toteRegistry = {};
-  window.appState.toteRegistry[tote] = {
-    status: "OPEN",
-    assignedPicker: null,
-    updatedAt: new Date().toISOString()
-  };
-
-  saveState();
-
-  renderSickToteList();
-  if (typeof renderPackerDashboard === "function") renderPackerDashboard();
-  if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
-
-  alert(`Sick Tote cleared: ${tote}`);
-  input.value = "";
-  if (typeof renderExceptionHandling === "function") renderExceptionHandling();
-}
-
 function renderSickToteList() {
   const el = document.getElementById("adminSickToteList");
   if (!el) return;
@@ -274,24 +225,26 @@ function renderSickToteList() {
 
   el.innerHTML = `
     <h3 style="margin-top:30px;">Sick Totes</h3>
-    <table border="1" cellpadding="8" cellspacing="0" style="margin:20px auto; background:white; width:95%;">
-      <thead>
-        <tr>
-          <th>Tote LP</th>
-          <th>Created</th>
-          <th>Exception Count</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${entries.map(([toteLp, data]) => `
+    <div class="table-scroll-wrap">
+      <table border="1" cellpadding="8" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
+        <thead>
           <tr>
-            <td>${toteLp}</td>
-            <td>${data.createdAt ? new Date(data.createdAt).toLocaleString() : "-"}</td>
-            <td>${(data.exceptions || []).length}</td>
+            <th>Tote LP</th>
+            <th>Created</th>
+            <th>Exception Count</th>
           </tr>
-        `).join("")}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          ${entries.map(([toteLp, data]) => `
+            <tr>
+              <td>${toteLp}</td>
+              <td>${data.createdAt ? new Date(data.createdAt).toLocaleString() : "-"}</td>
+              <td>${(data.exceptions || []).length}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -334,7 +287,7 @@ function renderAdminSummary() {
   summaryEl.innerHTML = `
     <h3>Picker Assignment Summary</h3>
     <div class="table-scroll-wrap">
-     <table border="1" cellpadding="8" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
+      <table border="1" cellpadding="6" cellspacing="0" class="mobile-admin-summary-table" style="margin:20px auto; background:white;">
         <thead>
           <tr>
             <th>Picker</th>
@@ -350,7 +303,7 @@ function renderAdminSummary() {
               <td>${c.remaining} / ${c.total}</td>
               <td>${c.completed}</td>
               <td>
-                <button onclick="showExceptionDetails('${picker}')" style="padding:4px 10px; border-radius:6px; cursor:pointer;">
+                <button onclick="showExceptionDetails('${picker}')" style="padding:4px 8px; border-radius:6px; cursor:pointer;">
                   ${c.exception}
                 </button>
               </td>
@@ -362,6 +315,7 @@ function renderAdminSummary() {
   `;
 
   renderSickToteList();
+  updateAdminExceptionBadge();
 
   if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
 }
@@ -372,10 +326,6 @@ function getOngoingPickers() {
     if (order.assignedPicker && !["Packed"].includes(order.status)) names.add(order.assignedPicker);
   });
   return Array.from(names);
-}
-
-function normalizeExceptionReason(value) {
-  return String(value || "").trim();
 }
 
 function getActiveExceptionItems() {
@@ -441,11 +391,9 @@ function setExceptionCategory(category) {
 
   const pickBtn = document.getElementById("exceptionTabPicking");
   const packBtn = document.getElementById("exceptionTabPacking");
-  const packControls = document.getElementById("packingExceptionControls");
 
   if (pickBtn) pickBtn.classList.toggle("active-toggle", category === "pick");
   if (packBtn) packBtn.classList.toggle("active-toggle", category === "pack");
-  if (packControls) packControls.style.display = category === "pack" ? "flex" : "none";
 
   renderExceptionHandling();
 }
@@ -535,10 +483,10 @@ function getSuggestedPickerForMissingSku(item) {
     const orders = getPickerActiveOrders(picker);
     if (!orders.length) return;
 
-    const currentAisles = orders.map(o => normalizeAisleValue(o.aisle || o.binCode || ""));
     let bestDistance = 9999;
 
-    currentAisles.forEach(a => {
+    orders.forEach(o => {
+      const a = normalizeAisleValue(o.aisle || o.binCode || "");
       const samePrefix = a.prefix === targetAisle.prefix;
       const distance = samePrefix ? Math.abs(a.num - targetAisle.num) : 500 + Math.abs(a.num - targetAisle.num);
       if (distance < bestDistance) bestDistance = distance;
@@ -550,12 +498,7 @@ function getSuggestedPickerForMissingSku(item) {
       : `Currently active but farther from aisle ${item.aisle}. Add to end of queue.`;
 
     if (!best || bestDistance < best.distance) {
-      best = {
-        picker,
-        distance: bestDistance,
-        placement,
-        reason
-      };
+      best = { picker, distance: bestDistance, placement, reason };
     }
   });
 
@@ -613,6 +556,7 @@ function renderExceptionHandling() {
     emptyEl.style.display = "block";
     emptyEl.style.color = "";
     listEl.innerHTML = "";
+    updateAdminExceptionBadge();
     return;
   }
 
@@ -623,17 +567,12 @@ function renderExceptionHandling() {
       emptyEl.textContent = "No more picking exceptions";
       emptyEl.style.display = "block";
       emptyEl.style.color = "green";
-      listEl.innerHTML = `
-        <div class="packing-empty-state">
-          <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
-        </div>
-      `;
+      listEl.innerHTML = `<div class="packing-empty-state"><button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button></div>`;
+      updateAdminExceptionBadge();
       return;
     }
 
     emptyEl.style.display = "none";
-    emptyEl.style.color = "";
-
     const pickerOptions = (window.appState.pickers || []).map(name => `<option value="${name}">${name}</option>`).join("");
 
     listEl.innerHTML = `<div class="exception-list">${items.map(item => `
@@ -682,6 +621,7 @@ function renderExceptionHandling() {
         </div>
       </div>
     `).join("")}</div>`;
+    updateAdminExceptionBadge();
     return;
   }
 
@@ -693,16 +633,12 @@ function renderExceptionHandling() {
     emptyEl.textContent = "No more packing exceptions";
     emptyEl.style.display = "block";
     emptyEl.style.color = "green";
-    listEl.innerHTML = `
-      <div class="packing-empty-state">
-        <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
-      </div>
-    `;
+    listEl.innerHTML = `<div class="packing-empty-state"><button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button></div>`;
+    updateAdminExceptionBadge();
     return;
   }
 
   emptyEl.style.display = "none";
-  emptyEl.style.color = "";
 
   if (!window.currentPackingModePage) {
     listEl.innerHTML = `
@@ -718,18 +654,14 @@ function renderExceptionHandling() {
         </button>
       </div>
     `;
+    updateAdminExceptionBadge();
     return;
   }
 
-  if (window.currentPackingModePage === "missing") {
-    renderPackingMissingPage(missingItems, listEl, emptyEl);
-    return;
-  }
+  if (window.currentPackingModePage === "missing") renderPackingMissingPage(missingItems, listEl, emptyEl);
+  if (window.currentPackingModePage === "additional") renderPackingAdditionalPage(additionalItems, listEl, emptyEl);
 
-  if (window.currentPackingModePage === "additional") {
-    renderPackingAdditionalPage(additionalItems, listEl, emptyEl);
-    return;
-  }
+  updateAdminExceptionBadge();
 }
 
 function renderPackingMissingPage(items, listEl, emptyEl) {
@@ -737,12 +669,7 @@ function renderPackingMissingPage(items, listEl, emptyEl) {
     emptyEl.textContent = "No missing SKU exceptions";
     emptyEl.style.display = "block";
     emptyEl.style.color = "green";
-    listEl.innerHTML = `
-      <div class="packing-empty-state">
-        <button class="secondary-btn" onclick="backToPackingModes()">Back</button>
-        <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
-      </div>
-    `;
+    listEl.innerHTML = `<div class="packing-empty-state"><button class="secondary-btn" onclick="backToPackingModes()">Back</button><button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button></div>`;
     return;
   }
 
@@ -767,7 +694,6 @@ function renderPackingMissingPage(items, listEl, emptyEl) {
         return `
           <div class="packing-exception-clean-card">
             <div class="packing-exception-title">SO ${item.so}</div>
-
             <div class="packing-exception-details">
               <div><strong>SKU:</strong> ${firstMissing.scannedSku || item.sku || "-"}</div>
               <div><strong>Reason:</strong> Missing SKU</div>
@@ -812,12 +738,7 @@ function renderPackingAdditionalPage(items, listEl, emptyEl) {
     emptyEl.textContent = "No additional SKU exceptions";
     emptyEl.style.display = "block";
     emptyEl.style.color = "green";
-    listEl.innerHTML = `
-      <div class="packing-empty-state">
-        <button class="secondary-btn" onclick="backToPackingModes()">Back</button>
-        <button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button>
-      </div>
-    `;
+    listEl.innerHTML = `<div class="packing-empty-state"><button class="secondary-btn" onclick="backToPackingModes()">Back</button><button class="secondary-btn" onclick="backToAdminDashboard()">Back to Admin Pick & Pack</button></div>`;
     return;
   }
 
@@ -833,7 +754,6 @@ function renderPackingAdditionalPage(items, listEl, emptyEl) {
       ${items.map(item => `
         <div class="packing-exception-clean-card">
           <div class="packing-exception-title">Tote ${item.toteLp}</div>
-
           <div class="packing-exception-details">
             <div><strong>Additional SKU(s):</strong> ${(item.additionalItems || []).map(x => x.scannedSku).filter(Boolean).join(", ") || item.sku || "-"}</div>
             <div><strong>Returned items:</strong> ${(item.additionalItems || []).length}</div>
@@ -860,31 +780,15 @@ function togglePackingOverride(key) {
 }
 
 function completePackingReassignment(key, pickerName, placement) {
-  const allItems = getActiveExceptionItems();
-  const item = allItems.find(entry => entry.key === key);
+  const item = getActiveExceptionItems().find(entry => entry.key === key);
   if (!item) return;
 
   const firstMissing = (item.missingItems || [])[0] || {};
-  const targetSo = String(firstMissing.so || item.so || "").trim();
   const targetSku = String(firstMissing.scannedSku || item.sku || "").trim().toUpperCase();
 
   let relatedOrder = (window.appState.orders || []).find(order =>
-    String(order.so || "").trim() === targetSo &&
     String(order.sku || "").trim().toUpperCase() === targetSku
   );
-
-  if (!relatedOrder) {
-    relatedOrder = (window.appState.orders || []).find(order =>
-      String(order.sku || "").trim().toUpperCase() === targetSku &&
-      ["Ready for Packing", "Packed", "Exception", "Exception Reviewed", "Inventory Hold", "Damage Hold"].includes(order.status)
-    );
-  }
-
-  if (!relatedOrder) {
-    relatedOrder = (window.appState.orders || []).find(order =>
-      String(order.sku || "").trim().toUpperCase() === targetSku
-    );
-  }
 
   if (!relatedOrder) {
     alert("Could not find the original order line for reassignment.");
@@ -905,10 +809,13 @@ function completePackingReassignment(key, pickerName, placement) {
     reviewedAt: new Date().toISOString(),
     handledBy: "Admin",
     exceptionType: "Packing Exception",
-    resolutionType: "Missing SKU"
+    resolutionType: "Missing SKU",
+    picker: firstMissing.picker || item.picker || relatedOrder.assignedPicker || "Unassigned"
   });
 
   saveState();
+  updateAdminExceptionBadge();
+
   renderAdminSummary();
   if (typeof renderPickerDashboard === "function") renderPickerDashboard();
   if (typeof renderPackerDashboard === "function") renderPackerDashboard();
@@ -932,8 +839,7 @@ function savePackingMissingReassignment(key) {
     return;
   }
 
-  const allItems = getActiveExceptionItems();
-  const item = allItems.find(entry => entry.key === key);
+  const item = getActiveExceptionItems().find(entry => entry.key === key);
   if (!item) return;
 
   const firstMissing = (item.missingItems || [])[0] || {};
@@ -947,8 +853,7 @@ function savePackingMissingReassignment(key) {
 }
 
 function clearAdditionalPackingExceptionByScan(key) {
-  const allItems = getActiveExceptionItems();
-  const item = allItems.find(entry => entry.key === key);
+  const item = getActiveExceptionItems().find(entry => entry.key === key);
   if (!item) return;
 
   const input = document.getElementById(`pack-clear-scan-${key}`);
@@ -977,10 +882,13 @@ function clearAdditionalPackingExceptionByScan(key) {
     reviewedAt: new Date().toISOString(),
     handledBy: "Admin",
     exceptionType: "Packing Exception",
-    resolutionType: "Additional SKU"
+    resolutionType: "Additional SKU",
+    picker: item.picker || "Unassigned"
   });
 
   saveState();
+  updateAdminExceptionBadge();
+
   renderAdminSummary();
   if (typeof renderPackerDashboard === "function") renderPackerDashboard();
   if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
@@ -1034,7 +942,6 @@ function saveExceptionDecision(key) {
       order.isNewAssignedPick = true;
       order.newAssignedAt = new Date().toISOString();
       pushOrderToTopForPicker(order);
-
     } else if (decision === "Reassign") {
       order.status = "Assigned";
       order.exceptionReason = null;
@@ -1043,16 +950,12 @@ function saveExceptionDecision(key) {
       order.isNewAssignedPick = true;
       order.newAssignedAt = new Date().toISOString();
       pushOrderToTopForPicker(order);
-
     } else if (decision === "Approve Exception") {
       order.status = "Exception Reviewed";
-
     } else if (decision === "Short Pick / Inventory Issue") {
       order.status = "Inventory Hold";
-
     } else if (decision === "Damage Hold") {
       order.status = "Damage Hold";
-
     } else if (decision === "Other") {
       order.status = "Exception Reviewed";
     }
@@ -1061,7 +964,6 @@ function saveExceptionDecision(key) {
     order.adminComment = comment || null;
     order.adminImage = imageName || null;
     order.adminReviewedAt = new Date().toISOString();
-
   } else if (item.type === "sick") {
     alert("For packing exceptions, use Missing SKU or Additional SKU pages.");
     return;
@@ -1075,13 +977,33 @@ function saveExceptionDecision(key) {
     reviewedAt: new Date().toISOString(),
     handledBy: "Admin",
     exceptionType: "Picking Exception",
-    resolutionType: decision
+    resolutionType: decision,
+    picker: item.picker || "Unassigned"
   });
 
   saveState();
+  updateAdminExceptionBadge();
+
   renderAdminSummary();
   if (typeof renderPickerDashboard === "function") renderPickerDashboard();
   if (typeof renderPackerDashboard === "function") renderPackerDashboard();
   if (typeof renderOperationsDashboard === "function") renderOperationsDashboard();
   renderExceptionHandling();
+}
+
+function updateAdminExceptionBadge() {
+  const badge = document.getElementById("adminExceptionBadge");
+  if (!badge) return;
+
+  const count = typeof getActiveExceptionItems === "function"
+    ? getActiveExceptionItems().length
+    : 0;
+
+  if (count > 0) {
+    badge.style.display = "inline-flex";
+    badge.textContent = "!";
+  } else {
+    badge.style.display = "none";
+    badge.textContent = "";
+  }
 }
