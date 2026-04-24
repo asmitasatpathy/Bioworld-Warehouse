@@ -1524,3 +1524,49 @@ label {
   margin-top: 20px;
   flex-wrap: wrap;
 }
+.mobile-admin-summary-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.mobile-admin-summary-table th,
+.mobile-admin-summary-table td {
+  padding: 8px 6px;
+  word-break: break-word;
+  text-align: center;
+}
+
+.mobile-admin-summary-table th:first-child,
+.mobile-admin-summary-table td:first-child {
+  text-align: left;
+  width: 24%;
+}
+
+.mobile-admin-summary-table th:nth-child(2),
+.mobile-admin-summary-table td:nth-child(2) {
+  width: 30%;
+}
+
+.mobile-admin-summary-table th:nth-child(3),
+.mobile-admin-summary-table td:nth-child(3) {
+  width: 23%;
+}
+
+.mobile-admin-summary-table th:nth-child(4),
+.mobile-admin-summary-table td:nth-child(4) {
+  width: 23%;
+}
+
+@media (max-width: 640px) {
+  .mobile-admin-summary-table {
+    font-size: 12px;
+  }
+
+  .mobile-admin-summary-table button {
+    padding: 6px 8px;
+    font-size: 12px;
+    min-height: 32px;
+  }
+}
