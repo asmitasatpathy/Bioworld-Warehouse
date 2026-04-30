@@ -970,3 +970,50 @@ function updateAdminExceptionBadge() {
     badge.textContent = "";
   }
 }
+function downloadFullTrialReportExcel() {
+  const rows = (window.appState.orders || []).map(order => {
+    const pickStart = order.tripStartTime || "";
+    const pickEnd = order.tripEndTime || "";
+    const packEnd = order.packTime || "";
+    const assignedTime = order.assignedAt || order.importedAt || order.createdAt || "";
+    const tripTime = pickStart && pickEnd ? Math.round((new Date(pickEnd) - new Date(pickStart)) / 1000) : "";
+    const totalCycleTime = assignedTime && packEnd ? Math.round((new Date(packEnd) - new Date(assignedTime)) / 1000) : "";
+
+    const resolved = (window.appState.resolvedExceptions || []).find(r =>
+      String(r.key || "").includes(String(order.so || ""))
+    );
+
+    const reassignmentNeeded =
+      order.adminDecision === "Reassign" ||
+      order.isNewAssignedPick === true ||
+      order.reassignedAt
+        ? 1
+        : 0;
+
+    return {
+      "Order Assignment Time": assignedTime,
+      "SO": order.so || "",
+      "SKU": order.sku || "",
+      "Picker": order.assignedPicker || "",
+      "Pick Start Time": pickStart,
+      "Pick End Time": pickEnd,
+      "Trip Time Seconds": tripTime,
+      "Pack Start Time": pickEnd,
+      "Pack End Time": packEnd,
+      "Total Packing Time Seconds": pickEnd && packEnd ? Math.round((new Date(packEnd) - new Date(pickEnd)) / 1000) : "",
+      "Admin Exception Raise Time": order.tripEndTime || "",
+      "Exception Handled End Time": resolved ? resolved.reviewedAt || "" : "",
+      "Type of Exception": resolved ? resolved.exceptionType || "" : order.status === "Exception" ? "Picking Exception" : "",
+      "Sub Category of Exception": resolved ? resolved.resolutionType || "" : order.exceptionReason || "",
+      "Exception Raised By": order.status === "Exception" ? `Picker - ${order.assignedPicker || ""}` : "",
+      "Reassignment Needed": reassignmentNeeded,
+      "Reassigned Picker Name": reassignmentNeeded ? order.assignedPicker || "" : "",
+      "Total Cycle Time Seconds": totalCycleTime
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Message: "No data available" }]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Trial Report");
+  XLSX.writeFile(wb, "warehouse_trial_full_report.xlsx");
+}
