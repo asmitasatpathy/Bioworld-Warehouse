@@ -1607,3 +1607,15 @@ label {
   margin: 0 !important;
   border: 0 !important;
 }
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #2f6df6;
+  color: white;
+  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
