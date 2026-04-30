@@ -972,23 +972,29 @@ function updateAdminExceptionBadge() {
 }
 function downloadFullTrialReportExcel() {
   const rows = (window.appState.orders || []).map(order => {
+    const assignedTime = order.assignedAt || order.importedAt || order.createdAt || "";
     const pickStart = order.tripStartTime || "";
     const pickEnd = order.tripEndTime || "";
+    const packStart = order.tripEndTime || "";
     const packEnd = order.packTime || "";
-    const assignedTime = order.assignedAt || order.importedAt || order.createdAt || "";
-    const tripTime = pickStart && pickEnd ? Math.round((new Date(pickEnd) - new Date(pickStart)) / 1000) : "";
-    const totalCycleTime = assignedTime && packEnd ? Math.round((new Date(packEnd) - new Date(assignedTime)) / 1000) : "";
+
+    const tripTime = pickStart && pickEnd
+      ? Math.round((new Date(pickEnd) - new Date(pickStart)) / 1000)
+      : "";
+
+    const packingTime = packStart && packEnd
+      ? Math.round((new Date(packEnd) - new Date(packStart)) / 1000)
+      : "";
+
+    const cycleTime = assignedTime && packEnd
+      ? Math.round((new Date(packEnd) - new Date(assignedTime)) / 1000)
+      : "";
 
     const resolved = (window.appState.resolvedExceptions || []).find(r =>
       String(r.key || "").includes(String(order.so || ""))
     );
 
-    const reassignmentNeeded =
-      order.adminDecision === "Reassign" ||
-      order.isNewAssignedPick === true ||
-      order.reassignedAt
-        ? 1
-        : 0;
+    const reassignmentNeeded = order.reassignedAt || order.adminDecision === "Reassign" ? 1 : 0;
 
     return {
       "Order Assignment Time": assignedTime,
@@ -998,9 +1004,9 @@ function downloadFullTrialReportExcel() {
       "Pick Start Time": pickStart,
       "Pick End Time": pickEnd,
       "Trip Time Seconds": tripTime,
-      "Pack Start Time": pickEnd,
+      "Pack Start Time": packStart,
       "Pack End Time": packEnd,
-      "Total Packing Time Seconds": pickEnd && packEnd ? Math.round((new Date(packEnd) - new Date(pickEnd)) / 1000) : "",
+      "Total Packing Time Seconds": packingTime,
       "Admin Exception Raise Time": order.tripEndTime || "",
       "Exception Handled End Time": resolved ? resolved.reviewedAt || "" : "",
       "Type of Exception": resolved ? resolved.exceptionType || "" : order.status === "Exception" ? "Picking Exception" : "",
@@ -1008,7 +1014,7 @@ function downloadFullTrialReportExcel() {
       "Exception Raised By": order.status === "Exception" ? `Picker - ${order.assignedPicker || ""}` : "",
       "Reassignment Needed": reassignmentNeeded,
       "Reassigned Picker Name": reassignmentNeeded ? order.assignedPicker || "" : "",
-      "Total Cycle Time Seconds": totalCycleTime
+      "Total Cycle Time Seconds": cycleTime
     };
   });
 
