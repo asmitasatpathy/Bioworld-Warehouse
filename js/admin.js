@@ -28,6 +28,7 @@ function mapImportedRow(row) {
     carrier: row["ShippingAgentCode"] || row["Shipping Agent Code"] || row["Carrier"] || "",
     aisle: String(binCode || "").trim() || "UNMAPPED",
     assignedPicker: null,
+    assignedAt: new Date().toISOString(),
     status: "Assigned",
     tripStartTime: null,
     tripEndTime: null,
