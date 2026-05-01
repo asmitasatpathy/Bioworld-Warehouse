@@ -195,6 +195,12 @@ function compareOrdersByOptimizedRoute(a, b) {
   if (a.status === "In Progress" && b.status !== "In Progress") return -1;
   if (b.status === "In Progress" && a.status !== "In Progress") return 1;
 
+  // Keep exception tickets at the bottom
+  const aException = a.status === "Exception" ? 1 : 0;
+  const bException = b.status === "Exception" ? 1 : 0;
+
+  if (aException !== bException) return aException - bException;
+
   const routeA = getSnakeSequence(a);
   const routeB = getSnakeSequence(b);
 
