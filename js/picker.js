@@ -187,20 +187,24 @@ function getSnakeSequence(order) {
 }
 
 function compareOrdersByOptimizedRoute(a, b) {
-  const aNew = a.isNewAssignedPick ? 1 : 0;
-  const bNew = b.isNewAssignedPick ? 1 : 0;
 
-  if (bNew !== aNew) return bNew - aNew;
-
-  if (a.status === "In Progress" && b.status !== "In Progress") return -1;
-  if (b.status === "In Progress" && a.status !== "In Progress") return 1;
-
-  // Keep exception tickets at the bottom
+  // 🚨 ALWAYS push exceptions to bottom (highest priority rule)
   const aException = a.status === "Exception" ? 1 : 0;
   const bException = b.status === "Exception" ? 1 : 0;
 
   if (aException !== bException) return aException - bException;
 
+  // New picks priority
+  const aNew = a.isNewAssignedPick ? 1 : 0;
+  const bNew = b.isNewAssignedPick ? 1 : 0;
+
+  if (bNew !== aNew) return bNew - aNew;
+
+  // In-progress priority
+  if (a.status === "In Progress" && b.status !== "In Progress") return -1;
+  if (b.status === "In Progress" && a.status !== "In Progress") return 1;
+
+  // Route optimization
   const routeA = getSnakeSequence(a);
   const routeB = getSnakeSequence(b);
 
