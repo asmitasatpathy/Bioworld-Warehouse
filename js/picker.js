@@ -148,7 +148,66 @@ function getStatusLabel(status) {
   if (status === "Exception") return "exception";
   return "assigned";
 }
+function parseWarehouseBinLocation(order) {
+  const value = String(order.binCode || order.aisle || "").trim().toUpperCase();
 
+  const match = value.match(/A\s*0*([0-9]+)/);
+  const aisleNum = match ? parseInt(match[1], 10) : 9999;
+
+  const positionMatch = value.match(/([0-9]{2,4})$/);
+  const position = positionMatch ? parseInt(positionMatch[1], 10) : 9999;
+
+  return {
+    aisleNum,
+    position
+  };
+}
+
+function getZoneForAisle(aisleNum) {
+  if (aisleNum >= 1 && aisleNum <= 5) return "ZONE_1";
+  if (aisleNum >= 6 && aisleNum <= 10) return "ZONE_2";
+  if (aisleNum >= 11 && aisleNum <= 15) return "ZONE_3";
+  if (aisleNum >= 16 && aisleNum <= 20) return "ZONE_4";
+  return "UNMAPPED";
+}
+
+function getSnakeSequence(order) {
+  const loc = parseWarehouseBinLocation(order);
+  const isEvenAisle = loc.aisleNum % 2 === 0;
+
+  const snakePosition = isEvenAisle
+    ? 9999 - loc.position
+    : loc.position;
+
+  return {
+    zone: getZoneForAisle(loc.aisleNum),
+    aisleNum: loc.aisleNum,
+    snakePosition
+  };
+}
+
+function compareOrdersByOptimizedRoute(a, b) {
+  const aNew = a.isNewAssignedPick ? 1 : 0;
+  const bNew = b.isNewAssignedPick ? 1 : 0;
+
+  if (bNew !== aNew) return bNew - aNew;
+
+  if (a.status === "In Progress" && b.status !== "In Progress") return -1;
+  if (b.status === "In Progress" && a.status !== "In Progress") return 1;
+
+  const routeA = getSnakeSequence(a);
+  const routeB = getSnakeSequence(b);
+
+  if (routeA.zone !== routeB.zone) {
+    return routeA.zone.localeCompare(routeB.zone);
+  }
+
+  if (routeA.aisleNum !== routeB.aisleNum) {
+    return routeA.aisleNum - routeB.aisleNum;
+  }
+
+  return routeA.snakePosition - routeB.snakePosition;
+}
 function renderPickerDashboard() {
   const pickerName = window.appState.currentUser;
   const ordersEl = document.getElementById("pickerOrders");
@@ -230,16 +289,7 @@ function renderPickerDashboard() {
     return;
   }
 
-  visibleOrders.sort((a, b) => {
-    const aNew = a.isNewAssignedPick ? 1 : 0;
-    const bNew = b.isNewAssignedPick ? 1 : 0;
-    if (bNew !== aNew) return bNew - aNew;
-
-    const aTime = new Date(a.tripStartTime || a.reassignedAt || a.newAssignedAt || 0).getTime();
-    const bTime = new Date(b.tripStartTime || b.reassignedAt || b.newAssignedAt || 0).getTime();
-    return aTime - bTime;
-  });
-
+  visibleOrders.sort(compareOrdersByOptimizedRoute);
   ordersEl.innerHTML = visibleOrders.map(order => {
     const isDone = order.status === "Ready for Packing" || order.status === "Packed";
     const isException = order.status === "Exception";
