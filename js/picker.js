@@ -558,10 +558,14 @@ function validateTote() {
   }
 
   const priorCarrierOrder = getOrdersForPicker(currentPicker).find(existingOrder => {
-    if (String(existingOrder.so) === String(order.so)) return false;
-    if (!existingOrder.toteLp) return false;
-    return normalizeCarrierForPicker(existingOrder.carrier) === orderCarrier;
-  });
+  if (String(existingOrder.so) === String(order.so)) return false;
+  if (!existingOrder.toteLp) return false;
+
+  const isActivePick = ["Assigned", "In Progress"].includes(existingOrder.status);
+  if (!isActivePick) return false;
+
+  return normalizeCarrierForPicker(existingOrder.carrier) === orderCarrier;
+});
 
   if (priorCarrierOrder && String(priorCarrierOrder.toteLp).toUpperCase() !== toteLp) {
     msg.textContent = "Invalid : Scan Different Tote";
